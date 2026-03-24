@@ -377,7 +377,7 @@
     <span class="logo-sub">/ submissions</span>
   </div>
   <div class="header-right">
-    <span class="api-badge" id="api-url-badge">http://localhost:5000</span>
+    <span class="api-badge" id="api-url-badge">Server</span>
     <button class="btn btn-refresh" id="btn-refresh">
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
         <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
@@ -426,7 +426,8 @@
 
 <script>
 // ── CONFIG ──
-const API_BASE = 'http://localhost:5000';
+// const API_BASE = 'http://localhost:5000';
+const API_BASE = `${location.protocol}//${location.hostname}:5000`;
 
 // ── STATE ──
 let allSubmissions = [];
