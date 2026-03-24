@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>WebPad — Submissions</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,300;0,400;0,500;1,400&family=Epilogue:wght@300;400;500;700;900&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:         #0c0e13;
+      --surface:    #12151c;
+      --surface2:   #191d27;
+      --border:     #232738;
+      --accent:     #c8f04a;
+      --accent-dim: rgba(200,240,74,0.12);
+      --blue:       #5ab4e8;
+      --red:        #e85a7a;
+      --muted:      #353a52;
+      --text:       #cdd4ee;
+      --text-dim:   #525b7a;
+      --font-mono:  'IBM Plex Mono', monospace;
+      --font-ui:    'Epilogue', sans-serif;
+    }
+
+    html, body {
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-ui);
+    }
+
+    /* grain overlay */
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      opacity: 0.02; pointer-events: none; z-index: 9999;
+    }
+
+    /* ── HEADER ── */
+    header {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(12,14,19,0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 32px;
+      height: 56px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+
+    .logo {
+      display: flex; align-items: center; gap: 12px;
+      font-family: var(--font-ui); font-weight: 900;
+      font-size: 17px; letter-spacing: -0.04em;
+    }
+    .logo-dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 10px var(--accent);
+    }
+    .logo-sub {
+      font-weight: 300; color: var(--text-dim); font-size: 14px;
+      margin-left: 2px; letter-spacing: -0.01em;
+    }
+
+    .header-right { display: flex; align-items: center; gap: 10px; }
+
+    .btn {
+      display: flex; align-items: center; gap: 6px;
+      font-family: var(--font-ui); font-size: 12px; font-weight: 500;
+      padding: 6px 14px; border-radius: 8px; border: none;
+      cursor: pointer; transition: all 0.15s;
+    }
+    .btn-refresh {
+      background: var(--accent-dim);
+      color: var(--accent);
+      border: 1px solid rgba(200,240,74,0.25);
+    }
+    .btn-refresh:hover { background: rgba(200,240,74,0.2); }
+    .btn-refresh.spinning svg { animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .api-badge {
+      font-family: var(--font-mono); font-size: 11px;
+      color: var(--text-dim); background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 4px 12px; border-radius: 20px;
+    }
+
+    /* ── MAIN LAYOUT ── */
+    .container {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      height: calc(100vh - 56px);
+      overflow: hidden;
+    }
+
+    /* ── SIDEBAR ── */
+    .sidebar {
+      border-right: 1px solid var(--border);
+      display: flex; flex-direction: column;
+      overflow: hidden;
+      background: var(--surface);
+    }
+
+    .sidebar-header {
+      padding: 16px 20px 12px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .sidebar-title {
+      font-size: 11px; font-family: var(--font-mono);
+      color: var(--text-dim); text-transform: uppercase;
+      letter-spacing: 0.08em; margin-bottom: 10px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+
+    .count-badge {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 10px; padding: 2px 8px;
+      font-size: 10px; color: var(--text-dim);
+    }
+
+    .search-wrap {
+      position: relative;
+    }
+    .search-icon {
+      position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+      color: var(--text-dim); font-size: 12px; pointer-events: none;
+    }
+    #search {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-family: var(--font-mono); font-size: 12px;
+      padding: 7px 10px 7px 30px;
+      outline: none; transition: border-color 0.15s;
+    }
+    #search:focus { border-color: var(--accent); }
+    #search::placeholder { color: var(--text-dim); }
+
+    #sub-list {
+      flex: 1; overflow-y: auto;
+      padding: 8px 0;
+    }
+    #sub-list::-webkit-scrollbar { width: 4px; }
+    #sub-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    .sub-item {
+      padding: 12px 20px;
+      cursor: pointer;
+      border-left: 3px solid transparent;
+      transition: all 0.12s;
+      position: relative;
+    }
+    .sub-item:hover { background: var(--surface2); }
+    .sub-item.active {
+      background: var(--accent-dim);
+      border-left-color: var(--accent);
+    }
+
+    .sub-item-name {
+      font-size: 13px; font-weight: 500;
+      color: var(--text); margin-bottom: 3px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .sub-item.active .sub-item-name { color: var(--accent); }
+
+    .sub-item-meta {
+      display: flex; align-items: center; gap: 8px;
+      font-family: var(--font-mono); font-size: 10px; color: var(--text-dim);
+    }
+    .sub-item-file {
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      max-width: 160px;
+    }
+
+    .empty-sidebar {
+      padding: 40px 20px; text-align: center;
+      font-family: var(--font-mono); font-size: 12px; color: var(--text-dim);
+      line-height: 1.8;
+    }
+
+    /* ── DETAIL PANEL ── */
+    .detail {
+      display: flex; flex-direction: column;
+      overflow: hidden;
+      background: var(--bg);
+    }
+
+    .detail-header {
+      padding: 20px 28px 16px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      flex-shrink: 0;
+    }
+
+    .detail-name {
+      font-size: 22px; font-weight: 900;
+      letter-spacing: -0.04em; color: var(--text);
+      margin-bottom: 6px;
+    }
+
+    .detail-meta-row {
+      display: flex; align-items: center; gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .meta-chip {
+      display: flex; align-items: center; gap: 6px;
+      font-family: var(--font-mono); font-size: 11px;
+      color: var(--text-dim);
+    }
+    .meta-chip svg { flex-shrink: 0; }
+
+    .detail-tabs {
+      display: flex; gap: 0;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      padding: 0 28px;
+      flex-shrink: 0;
+    }
+
+    .tab {
+      font-family: var(--font-mono); font-size: 11px;
+      font-weight: 500; letter-spacing: 0.04em;
+      padding: 10px 16px;
+      border: none; background: none;
+      color: var(--text-dim);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.15s;
+      text-transform: uppercase;
+    }
+    .tab:hover { color: var(--text); }
+    .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+    .detail-body {
+      flex: 1; overflow-y: auto; padding: 24px 28px;
+    }
+    .detail-body::-webkit-scrollbar { width: 6px; }
+    .detail-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    /* code view */
+    .code-block {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .code-block-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface2);
+    }
+    .code-lang {
+      font-family: var(--font-mono); font-size: 11px;
+      color: var(--text-dim); letter-spacing: 0.06em; text-transform: uppercase;
+    }
+    .copy-btn {
+      font-family: var(--font-mono); font-size: 10px;
+      background: none; border: 1px solid var(--border);
+      color: var(--text-dim); border-radius: 5px;
+      padding: 3px 10px; cursor: pointer; transition: all 0.15s;
+    }
+    .copy-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .copy-btn.copied { border-color: var(--accent); color: var(--accent); }
+
+    pre {
+      padding: 18px;
+      font-family: var(--font-mono); font-size: 12px;
+      line-height: 1.7; color: var(--text);
+      overflow-x: auto; white-space: pre-wrap; word-break: break-word;
+      max-height: 520px; overflow-y: auto;
+    }
+    pre::-webkit-scrollbar { width: 4px; height: 4px; }
+    pre::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    /* preview iframe */
+    .preview-wrap {
+      border: 1px solid var(--border);
+      border-radius: 10px; overflow: hidden;
+      background: #fff;
+    }
+    .preview-bar {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 14px;
+      background: var(--surface2);
+      border-bottom: 1px solid var(--border);
+    }
+    .preview-dot { width: 8px; height: 8px; border-radius: 50%; }
+    .pd-r { background: #e85a7a; }
+    .pd-y { background: #e8c95a; }
+    .pd-g { background: #5ae8a0; }
+    iframe.sub-preview {
+      width: 100%; border: none;
+      height: 480px; display: block;
+      background: #fff;
+    }
+
+    /* json view */
+    .json-view { font-family: var(--font-mono); font-size: 12px; line-height: 1.8; }
+    .jk { color: var(--blue); }
+    .jv { color: var(--text); }
+    .js { color: #a8e890; }
+    .jn { color: #e8a05a; }
+
+    /* empty / loading state */
+    .state-screen {
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      height: 100%; gap: 14px;
+      color: var(--text-dim);
+    }
+    .state-icon { font-size: 40px; opacity: 0.4; }
+    .state-title { font-size: 15px; font-weight: 500; color: var(--text-dim); }
+    .state-sub { font-family: var(--font-mono); font-size: 12px; color: var(--text-dim); opacity: 0.6; }
+
+    /* loading bar */
+    .loading-bar-wrap {
+      width: 160px; height: 2px;
+      background: var(--border); border-radius: 2px; overflow: hidden;
+    }
+    .loading-bar {
+      height: 100%; width: 0%;
+      background: var(--accent); border-radius: 2px;
+      animation: loadprogress 1.2s ease infinite;
+    }
+    @keyframes loadprogress {
+      0%   { width: 0%;   margin-left: 0%; }
+      50%  { width: 60%;  margin-left: 20%; }
+      100% { width: 0%;   margin-left: 100%; }
+    }
+
+    /* error banner */
+    .error-banner {
+      background: rgba(232,90,122,0.08);
+      border: 1px solid rgba(232,90,122,0.2);
+      border-radius: 8px; padding: 12px 16px;
+      font-family: var(--font-mono); font-size: 12px;
+      color: var(--red); margin: 20px 28px;
+    }
+
+    /* stagger animation */
+    .sub-item { animation: fadeUp 0.2s ease both; }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(6px); }
+      to   { opacity: 1; transform: none; }
+    }
+
+    /* toast */
+    #toast {
+      position: fixed; bottom: 24px; left: 50%;
+      transform: translateX(-50%) translateY(10px);
+      background: var(--surface2); border: 1px solid var(--border);
+      color: var(--text); font-family: var(--font-mono); font-size: 12px;
+      padding: 8px 18px; border-radius: 20px;
+      opacity: 0; pointer-events: none; transition: all 0.2s;
+      white-space: nowrap; z-index: 9998;
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">
+    <div class="logo-dot"></div>
+    WebPad
+    <span class="logo-sub">/ submissions</span>
+  </div>
+  <div class="header-right">
+    <span class="api-badge" id="api-url-badge">http://localhost:5000</span>
+    <button class="btn btn-refresh" id="btn-refresh">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
+        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+      </svg>
+      Refresh
+    </button>
+  </div>
+</header>
+
+<!-- MAIN -->
+<div class="container">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-title">
+        Submissions
+        <span class="count-badge" id="count-badge">0</span>
+      </div>
+      <div class="search-wrap">
+        <span class="search-icon">⌕</span>
+        <input type="text" id="search" placeholder="Search by name or email…"/>
+      </div>
+    </div>
+    <div id="sub-list">
+      <div class="state-screen" style="height:200px">
+        <div class="loading-bar-wrap"><div class="loading-bar"></div></div>
+        <div class="state-sub">Loading submissions…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DETAIL -->
+  <div class="detail" id="detail">
+    <div class="state-screen">
+      <div class="state-icon">📋</div>
+      <div class="state-title">Select a submission</div>
+      <div class="state-sub">Choose one from the list to view its details</div>
+    </div>
+  </div>
+
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ── CONFIG ──
+const API_BASE = 'http://localhost:5000';
+
+// ── STATE ──
+let allSubmissions = [];
+let activeFile = null;
+
+// ── FETCH LIST ──
+async function loadSubmissions() {
+  const btn = document.getElementById('btn-refresh');
+  btn.classList.add('spinning');
+
+  try {
+    const res = await fetch(`${API_BASE}/submissions`);
+    if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+    const data = await res.json();
+    allSubmissions = data.submissions || [];
+    renderList(allSubmissions);
+    document.getElementById('count-badge').textContent = allSubmissions.length;
+  } catch (err) {
+    document.getElementById('sub-list').innerHTML = `
+      <div class="error-banner" style="margin:16px">
+        ✕ Could not connect to API<br>
+        <span style="opacity:0.7">${escHtml(err.message)}</span><br><br>
+        <span style="opacity:0.5">Make sure Flask is running on ${API_BASE}</span>
+      </div>`;
+  } finally {
+    btn.classList.remove('spinning');
+  }
+}
+
+// ── RENDER LIST ──
+function renderList(subs) {
+  const list = document.getElementById('sub-list');
+  const q = document.getElementById('search').value.toLowerCase();
+  const filtered = subs.filter(s =>
+    (s.name  || '').toLowerCase().includes(q) ||
+    (s.email || '').toLowerCase().includes(q) ||
+    (s.file  || '').toLowerCase().includes(q)
+  );
+
+  if (filtered.length === 0) {
+    list.innerHTML = `<div class="empty-sidebar">
+      ${q ? `No results for "<strong>${escHtml(q)}</strong>"` : 'No submissions yet.<br>Run WebPad and submit some code!'}
+    </div>`;
+    return;
+  }
+
+  list.innerHTML = filtered.map((s, i) => `
+    <div class="sub-item${s.file === activeFile ? ' active' : ''}"
+         data-file="${escHtml(s.file)}"
+         style="animation-delay:${i * 0.03}s"
+         onclick="openSubmission('${escHtml(s.file)}')">
+      <div class="sub-item-name">${escHtml(s.name || '—')}</div>
+      <div class="sub-item-meta">
+        <span>${escHtml(s.email || '—')}</span>
+        ·
+        <span class="sub-item-file">${escHtml(s.file)}</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ── OPEN DETAIL ──
+async function openSubmission(file) {
+  activeFile = file;
+  renderList(allSubmissions); // update active highlight
+
+  const detail = document.getElementById('detail');
+  detail.innerHTML = `<div class="state-screen">
+    <div class="loading-bar-wrap"><div class="loading-bar"></div></div>
+    <div class="state-sub">Loading ${escHtml(file)}…</div>
+  </div>`;
+
+  try {
+    const res = await fetch(`${API_BASE}/submissions/${encodeURIComponent(file)}`);
+    if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+    const sub = await res.json();
+    renderDetail(sub);
+  } catch (err) {
+    detail.innerHTML = `<div class="error-banner">✕ Failed to load: ${escHtml(err.message)}</div>`;
+  }
+}
+
+// ── RENDER DETAIL ──
+function renderDetail(sub) {
+  const detail = document.getElementById('detail');
+  const date = sub.submitted_at
+    ? new Date(sub.submitted_at).toLocaleString('en', {dateStyle:'medium', timeStyle:'short'})
+    : '—';
+
+  detail.innerHTML = `
+    <div class="detail-header">
+      <div class="detail-name">${escHtml(sub.name || '—')}</div>
+      <div class="detail-meta-row">
+        <div class="meta-chip">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          ${escHtml(sub.email || '—')}
+        </div>
+        <div class="meta-chip">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          ${escHtml(date)}
+        </div>
+        <div class="meta-chip">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          ${escHtml(sub.saved_as || '—')}
+        </div>
+      </div>
+    </div>
+
+    <div class="detail-tabs">
+      <button class="tab active" onclick="switchTab(this,'tab-preview')">Preview</button>
+      <button class="tab" onclick="switchTab(this,'tab-code')">Code</button>
+      <button class="tab" onclick="switchTab(this,'tab-json')">JSON</button>
+    </div>
+
+    <div class="detail-body">
+
+      <!-- PREVIEW TAB -->
+      <div id="tab-preview">
+        <div class="preview-wrap">
+          <div class="preview-bar">
+            <div class="preview-dot pd-r"></div>
+            <div class="preview-dot pd-y"></div>
+            <div class="preview-dot pd-g"></div>
+          </div>
+          <iframe class="sub-preview" sandbox="allow-scripts allow-modals"
+            srcdoc="${escAttr(sub.code || '')}"></iframe>
+        </div>
+      </div>
+
+      <!-- CODE TAB -->
+      <div id="tab-code" style="display:none">
+        <div class="code-block">
+          <div class="code-block-header">
+            <span class="code-lang">HTML / CSS / JS — merged</span>
+            <button class="copy-btn" onclick="copyCode(this, ${JSON.stringify(escHtml(sub.code || ''))})">Copy</button>
+          </div>
+          <pre>${escHtml(sub.code || '(empty)')}</pre>
+        </div>
+      </div>
+
+      <!-- JSON TAB -->
+      <div id="tab-json" style="display:none">
+        <div class="code-block">
+          <div class="code-block-header">
+            <span class="code-lang">raw JSON</span>
+            <button class="copy-btn" onclick="copyCode(this, ${JSON.stringify(JSON.stringify(sub, null, 2))})">Copy</button>
+          </div>
+          <pre class="json-view">${renderJson(sub)}</pre>
+        </div>
+      </div>
+
+    </div>
+  `;
+}
+
+// ── TAB SWITCH ──
+function switchTab(btn, id) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  ['tab-preview','tab-code','tab-json'].forEach(t => {
+    const el = document.getElementById(t);
+    if (el) el.style.display = t === id ? '' : 'none';
+  });
+}
+
+// ── COPY ──
+function copyCode(btn, text) {
+  // text is already HTML-escaped display; we need raw - pass raw via data attr instead
+  // Use a hidden approach: decode escaping for clipboard
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  document.body.appendChild(ta);
+  ta.select();
+  document.execCommand('copy');
+  document.body.removeChild(ta);
+  btn.textContent = '✓ Copied';
+  btn.classList.add('copied');
+  setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1800);
+  showToast('Copied to clipboard ✓');
+}
+
+// ── SEARCH ──
+document.getElementById('search').addEventListener('input', () => renderList(allSubmissions));
+
+// ── REFRESH ──
+document.getElementById('btn-refresh').addEventListener('click', loadSubmissions);
+
+// ── JSON SYNTAX HIGHLIGHT ──
+function renderJson(obj) {
+  return JSON.stringify(obj, null, 2)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, match => {
+      if (/^"/.test(match)) {
+        if (/:$/.test(match)) return `<span class="jk">${match}</span>`;
+        return `<span class="js">${match}</span>`;
+      }
+      if (/true|false/.test(match)) return `<span class="jn">${match}</span>`;
+      if (/null/.test(match)) return `<span class="jn">${match}</span>`;
+      return `<span class="jn">${match}</span>`;
+    });
+}
+
+// ── TOAST ──
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+// ── UTILS ──
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function escAttr(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+// ── BOOT ──
+loadSubmissions();
+</script>
+</body>
+</html>
