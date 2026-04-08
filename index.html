@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>eQuiz — Skill Assessment</title>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- Sending overlay -->
+<div class="sending-overlay" id="sending-overlay">
+  <div class="sending-spinner"></div>
+  <p>Sending results…</p>
+</div>
+
+<!-- Paste blocker notification -->
+<div class="paste-blocked" id="paste-toast">⛔ Pasting not allowed in the editor ⛔</div>
+
+<!-- Timer warning notification -->
+<div class="paste-blocked" id="timer-toast">⏳ 30 seconds remaining</div>
+
+<!-- Header -->
+<header>
+  <div class="logo">
+    <div class="logo-dot"></div>
+    eQuiz
+  </div>
+  <div class="timer-wrap" id="timer-wrap" style="display:none">
+    <span class="timer-icon">⏱</span>
+    <span id="timer-display">00:00</span>
+  </div>
+</header>
+
+<!-- Progress bar -->
+<div class="progress-bar-outer">
+  <div class="progress-bar-inner" id="progress-bar"></div>
+</div>
+
+<div class="container">
+
+  <!-- ── Intro Screen ── -->
+  <div id="intro-screen">
+    <!-- <div class="intro-badge">📚 Student Assessment</div> -->
+    <h1>Ready to<br><span>Test Your</span><br> Coding Skills?</h1>
+    <p>Answer all questions carefully. <br>You may navigate between questions before submitting.</p>
+
+    <div class="meta-grid">
+      <div class="meta-card">
+        <span class="val" id="meta-questions">8</span>
+        <span class="lbl">Questions</span>
+      </div>
+      <div class="meta-card">
+        <span class="val" id="meta-minutes">10</span>
+        <span class="lbl">Minutes</span>
+      </div>
+      <div class="meta-card">
+        <span class="val">2</span>
+        <span class="lbl">Types</span>
+      </div>
+    </div>
+
+    <!-- Student info fields -->
+    <div class="intro-fields">
+      <div class="field-group">
+        <label>Your Name</label>
+        <input type="text" id="name" placeholder="e.g. Jane Smith" autocomplete="name">
+        <span class="field-error" id="name-error"></span>
+      </div>
+      <div class="field-group">
+        <label>Your Email</label>
+        <input type="email" id="email" placeholder="e.g. jane@school.edu" autocomplete="email">
+        <span class="field-error" id="email-error"></span>
+      </div>
+    </div>
+
+    <button class="btn-primary" onclick="startQuiz()">
+      Start
+    </button>
+  </div>
+
+  <!-- ── Quiz Screen ── -->
+  <div id="quiz-screen">
+    <!-- Question header -->
+    <div class="question-header" id="q-header">
+      <span class="q-num" id="q-num-label">1 / 8</span>
+      <span class="q-type-badge mc" id="q-type-badge">Multiple Choice</span>
+    </div>
+
+    <!-- Question card -->
+    <div class="question-card" id="q-card">
+      <h2 id="q-text"></h2>
+      <div id="q-body"></div>
+    </div>
+
+    <!-- Nav buttons -->
+    <div class="nav-buttons">
+      <button class="btn-secondary" id="btn-prev" onclick="navigate(-1)">← Previous</button>
+      <button class="btn-secondary" id="btn-next" onclick="navigate(1)">Next →</button>
+    </div>
+
+    <!-- Dot nav -->
+    <div class="dot-nav" id="dot-nav"></div>
+
+    <!-- Submit section (shown when on last question or explicitly) -->
+    <div class="submit-section" id="submit-section">
+      <h3>Proceed to coding section?</h3>
+      <p>Review answers before moving on. You cannot come back after.</p>
+      <div class="unanswered-warn" id="unanswered-warn" style="display:none">
+        ⚠ <span id="unanswered-count"></span> question(s) unanswered
+      </div>
+      <button class="btn-submit" onclick="submitQuiz()">Next</button>
+    </div>
+  </div>
+
+  <!-- ── Result Screen ── -->
+  <!-- <div id="result-screen">
+    <div class="score-ring">
+      <svg viewBox="0 0 140 140" width="160" height="160">
+        <circle class="ring-bg" cx="70" cy="70" r="65"/>
+        <circle class="ring-fill" id="score-ring-fill" cx="70" cy="70" r="65"/>
+      </svg>
+      <div class="score-text">
+        <span class="pct" id="score-pct">—</span>
+        <span class="lbl">Score</span>
+      </div>
+    </div>
+
+    <h2 id="result-title">Quiz Complete!</h2>
+    <p class="sub" id="result-sub"></p>
+    <p style="font-family:'DM Mono',monospace;font-size:.8rem;color:var(--muted);margin-top:-.5rem;margin-bottom:2rem" id="result-student-info"></p>
+
+    <div class="result-stats">
+      <div class="result-stat">
+        <span class="val c" id="stat-correct">—</span>
+        <span class="lbl">Correct</span>
+      </div>
+      <div class="result-stat">
+        <span class="val w" id="stat-incorrect">—</span>
+        <span class="lbl">Wrong</span>
+      </div>
+      <div class="result-stat">
+        <span class="val n" id="stat-time">—</span>
+        <span class="lbl">Time</span>
+      </div>
+    </div>
+
+    <button class="btn-primary" onclick="resetQuiz()" style="margin-bottom:2rem">↺ Retake Quiz</button>
+
+    <div class="review-list" id="review-list"></div>
+  </div> -->
+
+</div>
+
+<script>
+  // Add this at the top of your script.js or before any API calls
+  const API_BASE = `${location.protocol}//${location.hostname}:5000`;
+
+    // const API_BASE = `${location.protocol}//${location.hostname}:5000`;
+  // ── Student Info ─────────────────────────────────────────────
+  let name  = '';
+  let email = '';
+
+  // ── Questions Data ──────────────────────────────────────────
+  // By default, this will load from questions.json. If the file cannot be loaded,
+  // it will fall back to a hardcoded copy.
+  const defaultQuestions = [
+    {
+      type: 'mc',
+      text: 'Which planet is known as the Red Planet?',
+      options: ['Venus', 'Mars', 'Jupiter', 'Saturn'],
+      answer: "Mars"
+    },
+    {
+      type: 'sa',
+      text: 'In your own words, explain what photosynthesis is and why it is important for life on Earth.',
+      minWords: 10
+    }
+  ];
+
+  let questions = [];
+  let questionsLoaded = false;
+
+  // ── State ───────────────────────────────────────────────────
+  let current = 0;
+  let answers = [];
+  let startTime = null;
+  let timerInterval = null;
+  let elapsed = 0;
+  let timeWarned = false;
+
+  // Utility helpers
+  function shuffleArray(arr) {
+    const copy = [...arr];
+    for (let i = copy.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [copy[i], copy[j]] = [copy[j], copy[i]];
+    }
+    return copy;
+  }
+
+  function getCorrectAnswer(q) {
+    if (q.type !== 'mc') return null;
+    if (typeof q.answer === 'string') return q.answer;
+    if (typeof q.answer === 'number' && Array.isArray(q.options)) {
+      return q.options[q.answer] ?? null;
+    }
+    return null;
+  }
+
+  // Quiz time limit (seconds)
+  const QUIZ_TIME_LIMIT_SEC = 25 * 60; // x minutes
+
+  // ── Paste Blocker ───────────────────────────────────────────
+  document.addEventListener('paste', e => {
+    const tag = document.activeElement.tagName;
+    if (tag === 'TEXTAREA' || tag === 'INPUT') {
+      e.preventDefault();
+      showPasteToast();
+    }
+  });
+
+  function showPasteToast() {
+    const t = document.getElementById('paste-toast');
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2500);
+  }
+
+  function showTimerToast(message) {
+    const t = document.getElementById('timer-toast');
+    if (!t) return;
+    t.textContent = message;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2500);
+  }
+
+  // ── Start ───────────────────────────────────────────────────
+  async function startQuiz() {
+    // Ensure questions are loaded before starting
+    await loadQuestions();
+
+    // Validate inputs
+    const nameInput  = document.getElementById('name');
+    const emailInput = document.getElementById('email');
+    const nameErr    = document.getElementById('name-error');
+    const emailErr   = document.getElementById('email-error');
+    let valid = true;
+
+    nameErr.textContent  = '';
+    emailErr.textContent = '';
+    nameInput.classList.remove('error');
+    emailInput.classList.remove('error');
+
+    if (!nameInput.value.trim()) {
+      nameErr.textContent = '⚠ Name is required';
+      nameInput.classList.add('error');
+      valid = false;
+    }
+
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailInput.value.trim()) {
+      emailErr.textContent = '⚠ Email is required';
+      emailInput.classList.add('error');
+      valid = false;
+    } else if (!emailPattern.test(emailInput.value.trim())) {
+      emailErr.textContent = '⚠ Enter a valid email';
+      emailInput.classList.add('error');
+      valid = false;
+    }
+
+    if (!valid) return;
+
+    if (!questions.length) {
+      alert('Unable to load quiz questions. Please restart the page.');
+      return;
+    }
+
+    name  = nameInput.value.trim();
+    email = emailInput.value.trim();
+
+    document.getElementById('intro-screen').style.display = 'none';
+    document.getElementById('quiz-screen').style.display = 'block';
+    document.getElementById('timer-wrap').style.display = 'flex';
+    startTime = Date.now();
+    timerInterval = setInterval(updateTimer, 1000);
+    timeWarned = false;
+    buildDotNav();
+    renderQuestion(0);
+  }
+
+  // ── Timer ───────────────────────────────────────────────────
+  async function loadQuestions() {
+    if (questionsLoaded) return;
+
+    try {
+      const res = await fetch('./assets/questions/ques_mcsa.json');
+      if (!res.ok) throw new Error(`Failed to fetch questions.json (HTTP ${res.status})`);
+
+      const data = await res.json();
+      if (!Array.isArray(data) || data.length === 0) {
+        throw new Error('questions.json must contain a non-empty array');
+      }
+
+      questions = data;
+    } catch (err) {
+      console.warn('Unable to load questions.json, falling back to embedded defaults.', err);
+      questions = defaultQuestions;
+    }
+
+    questions.forEach(q => {
+      if (q.type === 'mc' && Array.isArray(q.options)) {
+        // Keep consistent order per session by shuffling once.
+        q._shuffledOptions = shuffleArray(q.options);
+      }
+    });
+
+    answers = new Array(questions.length).fill(null);
+    questionsLoaded = true;
+    updateMetaCount();
+  }
+
+  function updateMetaCount() {
+    const qCountEl = document.getElementById('meta-questions');
+    if (qCountEl) qCountEl.textContent = `${questions.length}`;
+
+    const minutesEl = document.getElementById('meta-minutes');
+    if (minutesEl) minutesEl.textContent = `${Math.floor(QUIZ_TIME_LIMIT_SEC / 60)}`;
+  }
+
+  function updateTimer() {
+    elapsed = Math.floor((Date.now() - startTime) / 1000);
+    const remaining = Math.max(0, QUIZ_TIME_LIMIT_SEC - elapsed);
+    const m = String(Math.floor(remaining / 60)).padStart(2,'0');
+    const s = String(remaining % 60).padStart(2,'0');
+    document.getElementById('timer-display').textContent = `${m}:${s}`;
+
+    if (!timeWarned && remaining <= 30) {
+      timeWarned = true;
+      showTimerToast('⏳ 30 seconds remaining');
+    }
+
+    if (remaining <= 0) {
+      clearInterval(timerInterval);
+      timeUp();
+    }
+  }
+
+  function timeUp() {
+    // Force final elapsed time to match the limit
+    elapsed = QUIZ_TIME_LIMIT_SEC;
+
+    // Give the user a brief notice, then auto-submit
+    const overlay = document.getElementById('sending-overlay');
+    overlay.style.display = 'flex';
+    setTimeout(() => {
+      submitQuiz(true);
+    }, 300);
+  }
+
+  // ── Dot Nav ─────────────────────────────────────────────────
+  function buildDotNav() {
+    const nav = document.getElementById('dot-nav');
+    nav.innerHTML = '';
+    questions.forEach((_, i) => {
+      const btn = document.createElement('button');
+      btn.className = 'dot-btn';
+      btn.textContent = i + 1;
+      btn.onclick = () => goTo(i);
+      nav.appendChild(btn);
+    });
+    updateDots();
+  }
+
+  function updateDots() {
+    const btns = document.querySelectorAll('.dot-btn');
+    btns.forEach((btn, i) => {
+      btn.className = 'dot-btn';
+      if (i === current) btn.classList.add('active');
+      if (answers[i] !== null && answers[i] !== '') btn.classList.add('answered');
+    });
+  }
+
+  // ── Render Question ─────────────────────────────────────────
+  function renderQuestion(idx) {
+    current = idx;
+    const q = questions[idx];
+
+    // Header
+    document.getElementById('q-num-label').textContent = `${idx+1} / ${questions.length}`;
+    const badge = document.getElementById('q-type-badge');
+    badge.textContent = q.type === 'mc' ? 'Multiple Choice' : 'Short Answer';
+    badge.className = 'q-type-badge ' + q.type;
+
+    // Question text
+    document.getElementById('q-text').textContent = q.text;
+
+    // Body
+    const body = document.getElementById('q-body');
+    body.innerHTML = '';
+
+    if (q.type === 'mc') {
+      const options = q._shuffledOptions || q.options;
+      const grid = document.createElement('div');
+      grid.className = 'options-grid';
+      options.forEach((opt, oi) => {
+        const key = String.fromCharCode(65 + oi);
+        const selected = answers[idx] === opt;
+        const label = document.createElement('label');
+        label.className = 'option-label' + (selected ? ' selected' : '');
+        label.innerHTML = `
+          <input type="radio" name="q${idx}" value="${opt}" ${selected ? 'checked' : ''}>
+          <span class="option-key">${key}</span>
+          <span class="option-text">${opt}</span>
+        `;
+        label.addEventListener('click', () => {
+          answers[idx] = opt;
+          document.querySelectorAll('.option-label').forEach(l => l.classList.remove('selected'));
+          label.classList.add('selected');
+          updateDots();
+          updateProgress();
+          updateSubmitSection();
+        });
+        grid.appendChild(label);
+      });
+      body.appendChild(grid);
+    } else {
+      const wrap = document.createElement('div');
+      wrap.className = 'short-answer-wrap';
+      const ta = document.createElement('textarea');
+      ta.placeholder = 'Type your answer here…';
+      ta.value = answers[idx] || '';
+      ta.maxLength = 600;
+      const cc = document.createElement('div');
+      cc.className = 'char-count';
+      cc.textContent = `${(answers[idx]||'').length}/600`;
+
+      ta.addEventListener('input', () => {
+        answers[idx] = ta.value;
+        cc.textContent = `${ta.value.length}/600`;
+        updateDots();
+        updateProgress();
+        updateSubmitSection();
+      });
+
+      // Allow inserting tabs into textarea (useful for multi-line answers)
+      ta.addEventListener('keydown', e => {
+        if (e.key === 'Tab') {
+          e.preventDefault();
+          const start = ta.selectionStart;
+          const end = ta.selectionEnd;
+          const before = ta.value.substring(0, start);
+          const after = ta.value.substring(end);
+          ta.value = `${before}\t${after}`;
+          ta.selectionStart = ta.selectionEnd = start + 1;
+
+          // Keep state in sync
+          answers[idx] = ta.value;
+          cc.textContent = `${ta.value.length}/600`;
+          updateDots();
+          updateProgress();
+          updateSubmitSection();
+        }
+      });
+
+      // Block paste on textarea specifically
+      ta.addEventListener('paste', e => {
+        e.preventDefault();
+        showPasteToast();
+      });
+
+      wrap.appendChild(ta);
+      wrap.appendChild(cc);
+      body.appendChild(wrap);
+    }
+
+    // Prev/Next buttons
+    document.getElementById('btn-prev').style.visibility = idx === 0 ? 'hidden' : 'visible';
+    document.getElementById('btn-next').style.visibility = idx === questions.length-1 ? 'hidden' : 'visible';
+
+    // Show submit section on last question
+    const ss = document.getElementById('submit-section');
+    ss.style.display = idx === questions.length-1 ? 'block' : 'none';
+    updateSubmitSection();
+    updateDots();
+    updateProgress();
+  }
+
+  function updateProgress() {
+    const answered = answers.filter(a => a !== null && a !== '').length;
+    document.getElementById('progress-bar').style.width = `${(answered / questions.length) * 100}%`;
+  }
+
+  function updateSubmitSection() {
+    const unanswered = answers.filter(a => a === null || a === '').length;
+    const warn = document.getElementById('unanswered-warn');
+    if (unanswered > 0) {
+      warn.style.display = 'inline-flex';
+      document.getElementById('unanswered-count').textContent = unanswered;
+    } else {
+      warn.style.display = 'none';
+    }
+  }
+
+  // ── Navigation ───────────────────────────────────────────────
+  function navigate(dir) {
+    const next = current + dir;
+    if (next >= 0 && next < questions.length) goTo(next);
+  }
+
+  function goTo(idx) {
+    // Animate out
+    const card = document.getElementById('q-card');
+    card.style.opacity = '0';
+    card.style.transform = 'translateY(10px)';
+    setTimeout(() => {
+      renderQuestion(idx);
+      card.style.transition = 'none';
+      card.style.opacity = '0';
+      card.style.transform = 'translateY(10px)';
+      requestAnimationFrame(() => {
+        card.style.transition = 'opacity .3s ease, transform .3s ease';
+        card.style.opacity = '1';
+        card.style.transform = 'translateY(0)';
+      });
+    }, 150);
+  }
+
+  // ── Submit ───────────────────────────────────────────────────
+  async function submitQuiz(autoSubmitted = false) {
+    clearInterval(timerInterval);
+    const totalSec = elapsed;
+
+    // Score MC questions
+    let correct = 0;
+    let total_mc = 0;
+    questions.forEach((q, i) => {
+      if (q.type === 'mc') {
+        total_mc++;
+        const correctAnswer = getCorrectAnswer(q);
+        if (correctAnswer != null && answers[i] === correctAnswer) correct++;
+      }
+    });
+
+    const mcPct = total_mc > 0 ? Math.round((correct / total_mc) * 100) : 0;
+    const m = String(Math.floor(totalSec/60)).padStart(2,'0');
+    const s = String(totalSec%60).padStart(2,'0');
+    const timeStr = `${m}:${s}`;
+
+    // Build answer summary for email
+    const answerSummary = questions.map((q, i) => {
+      if (q.type === 'mc') {
+        const options = q._shuffledOptions || q.options;
+        const keys = ['A','B','C','D'];
+        const correctAnswer = getCorrectAnswer(q);
+        const selectedIndex = options.indexOf(answers[i]);
+        const correctIndex = options.indexOf(correctAnswer);
+        const yourAns = answers[i] !== null
+          ? `${keys[selectedIndex] || '?'}: ${answers[i]}`
+          : 'Not answered';
+        const corrAns = `${keys[correctIndex] || '?'}: ${correctAnswer}`;
+        const status  = answers[i] === correctAnswer ? '✅ Correct' : '❌ Incorrect';
+        return `Q${i+1} [Multiple Choice]: ${q.text}\nYour Answer: ${yourAns}\nCorrect Answer: ${corrAns}\nResult: ${status}`;
+      } else {
+        const ans = answers[i] || 'Not answered';
+        return `Q${i+1} [Short Answer]: ${q.text}\nYour Answer: ${ans}`;
+      }
+    }).join('\n\n---\n\n');
+
+
+    // Send results to Python backend
+    const jsonData = {
+      name: name,
+      email: email,
+      score: `${mcPct}%`,
+      correct: correct,
+      total_mc: total_mc,
+      time_taken: timeStr,
+      submitted_at: new Date().toLocaleString(),
+      answers: answerSummary
+    };
+
+    const overlay = document.getElementById('sending-overlay');
+    overlay.style.display = 'flex';
+
+    try {
+      const response = await fetch(`${API_BASE}/submit-quiz`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(jsonData)
+      });
+      
+      if (response.ok) {
+        console.log('✓ Quiz data sent to server successfully');
+        localStorage.setItem('quiz_student_name', name);
+        localStorage.setItem('quiz_student_email', email);
+        localStorage.setItem('quiz_submitted_at', new Date().toISOString());
+        
+        // window.location.href = `${location.protocol}//${location.hostname}:5500/webpad.html`;
+        // if (confirm('Choose next section:\nOK = Web Task\nCancel = Python Task')) {
+        //     window.location.href = './webtask.html';
+        // } else {
+        //     window.location.href = './pytask.html';
+        // }
+
+        window.location.href = './choice.html';
+        alert('✅ Submitted successfully! \nNow proceeding to the next section.');
+        
+      } else {
+        console.warn('Server response error:', response.status);
+      }
+    } catch (err) {
+      console.warn('Error sending to Python server:', err);
+      console.log('Make sure Python Flask server is running on ${API_BASE}');
+    } finally {
+      overlay.style.display = 'none';
+    }
+
+  }
+
+  // ── Reset ────────────────────────────────────────────────────
+  function resetQuiz() {
+    answers = new Array(questions.length).fill(null);
+    elapsed = 0;
+    timeWarned = false;
+    name = '';
+    email = '';
+    document.getElementById('name').value = '';
+    document.getElementById('email').value = '';
+    document.getElementById('result-screen').style.display = 'none';
+    document.getElementById('progress-bar').style.width = '0%';
+    document.getElementById('score-ring-fill').style.strokeDashoffset = '408';
+    document.getElementById('intro-screen').style.display = 'block';
+
+    const timerToast = document.getElementById('timer-toast');
+    if (timerToast) timerToast.classList.remove('show');
+  }
+
+  // Preload questions so the UI can show the correct question count immediately
+  loadQuestions();
+</script>
+<!-- <script src="script.js"></script> -->
+</body>
+</html>

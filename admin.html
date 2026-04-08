@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>WebPad — HTML / CSS / JS Playground</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;500&family=Syne:wght@400;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0b2327;
+      --surface:   #07333c;
+      --surface2:  #092c47;
+      --border:    #2a2d3a;
+      --html:      #e8845a;
+      --css:       #5ab4e8;
+      --js:        #e8c95a;
+      --green:     #5ae8a0;
+      --red:       #e85a7a;
+      --muted:     #3d4157;
+      --text:      #c8cfe8;
+      --text-dim:  #565d7a;
+      --font-mono: 'Fira Code', monospace;
+      --font-ui:   'Syne', sans-serif;
+    }
+
+    html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--font-ui); overflow: hidden; }
+
+    /* grain */
+    body::after {
+      content: '';
+      position: fixed; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      opacity: 0.022; pointer-events: none; z-index: 9999;
+    }
+
+    /* ── APP SHELL ── */
+    .app { display: grid; grid-template-rows: 52px 1fr; height: 100vh; }
+
+    /* ── HEADER ── */
+    header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 20px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      position: relative; z-index: 10;
+    }
+
+    .logo {
+      display: flex; align-items: center; gap: 10px;
+      font-family: var(--font-ui); font-weight: 700; font-size: 16px;
+      letter-spacing: -0.03em;
+    }
+    .logo-badges { display: flex; gap: 3px; }
+    .logo-badge {
+      width: 10px; height: 10px; border-radius: 50%;
+    }
+    .lb-h { background: var(--html); }
+    .lb-c { background: var(--css); }
+    .lb-j { background: var(--js); }
+
+    .header-center {
+      display: flex; align-items: center; gap: 6px;
+    }
+
+    .layout-btn {
+      display: flex; align-items: center; gap: 5px;
+      font-family: var(--font-mono); font-size: 11px;
+      padding: 5px 12px; border-radius: 6px;
+      border: 1px solid var(--border);
+      background: transparent; color: var(--text-dim);
+      cursor: pointer; transition: all 0.15s;
+    }
+    .layout-btn:hover, .layout-btn.active {
+      border-color: var(--muted); color: var(--text);
+      background: var(--surface2);
+    }
+    .layout-btn.active { color: var(--text); }
+
+    .header-actions { display: flex; align-items: center; gap: 8px; }
+
+    .btn {
+      display: flex; align-items: center; gap: 6px;
+      font-family: var(--font-ui); font-size: 13px; font-weight: 600;
+      padding: 7px 16px; border-radius: 8px; border: none;
+      cursor: pointer; transition: all 0.15s; letter-spacing: 0.01em;
+    }
+    .btn-run { background: var(--green); color: #0d1a12; }
+    .btn-run:hover { filter: brightness(1.1); transform: translateY(-1px); }
+    .btn-run:active { transform: none; }
+
+    .btn-ghost {
+      background: transparent; color: var(--text-dim);
+      border: 1px solid var(--border);
+    }
+    .btn-ghost:hover { border-color: var(--muted); color: var(--text); }
+
+    .btn-submit {
+      background: transparent; color: var(--css);
+      border: 1px solid var(--css);
+    }
+    .btn-submit:hover { background: rgba(90,180,232,0.08); transform: translateY(-1px); }
+    .btn-submit:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+    @keyframes slideInUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes pulse {
+      0%, 100% {
+        box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7);
+      }
+      50% {
+        box-shadow: 0 0 0 10px rgba(255, 255, 255, 0);
+      }
+    }
+
+    .big-btn {
+      padding: 15px 30px; 
+      font-size: 18px; 
+      cursor: pointer;
+      border: none; 
+      border-radius: 8px; 
+      transition: all 0.3s ease;
+      font-weight: bold;
+      /* animation: slideInUp 0.6s ease both; */
+    }
+
+    .big-btn:nth-child(1) { animation-delay: 0.1s; }
+    .big-btn:nth-child(2) { animation-delay: 0.2s; }
+    .big-btn:nth-child(3) { animation-delay: 0.3s; }
+
+    .big-btn:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+      animation: pulse 1s infinite;
+    }
+
+    .big-btn:active {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+  </style>
+</head>
+<body>
+
+<div class="app">
+  <!-- HEADER -->
+  <header>
+    <div class="logo">
+      <div class="logo-badges">
+        <div class="logo-badge lb-h"></div>
+        <div class="logo-badge lb-c"></div>
+        <div class="logo-badge lb-j"></div>
+      </div>
+      eQuiz
+    </div>
+
+    <div class="header-center">
+      <button class="layout-btn active" id="layout-split" title="Split view" style="display: none;">⬛ Split</button>
+      <button class="layout-btn" id="layout-editors" title="Editors only" style="display: none;">✏️ Editors</button>
+      <button class="layout-btn" id="layout-preview" title="Preview only" style="display: none;">👁 Preview</button>
+    </div>
+
+    <div class="header-actions">
+      <button class="btn btn-ghost" id="btn-console" style="display: none;">⌨ Console</button>
+      <button class="btn btn-ghost" id="btn-clear-all" style="display: none;">Clear</button>
+      <button class="btn btn-submit" id="btn-submit" style="display: none;">⬆ Submit</button>
+      <button class="btn btn-run" id="btn-run" style="display: none;">▶ Run</button>
+    </div>
+  </header>
+
+  <!-- WORKSPACE -->
+  <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 30px;">
+    <p style="font-size: 24px; color: #c2cdf3; text-align: center; max-width: 500px; margin: 0;">Choose the category of submissions to check</p>
+    <div style="display: flex; gap: 20px;">
+        <button onclick="window.location.href='./readmc.html'" class="big-btn" style="background: #442884; color: #fff;">MCSA</button>
+        <button onclick="window.location.href='./readjs.html'" class="big-btn" style="background: #2e8b45; color: #fff;">Web Code</button>
+        <button onclick="window.location.href='./readpyc.html'" class="big-btn" style="background: #cfb863; color: #000;">Python</button>
+    </div>
+  </div>
+</div>
+
+<script>
+
+// ── LOAD STUDENT INFO FROM QUIZ ──
+function loadStudentInfoFromQuiz() {
+  const nameInput = document.getElementById('name');
+  const emailInput = document.getElementById('email');
+  const savedName = localStorage.getItem('quiz_student_name');
+  const savedEmail = localStorage.getItem('quiz_student_email');
+  
+  if (savedName) {
+    nameInput.value = savedName;
+  }
+  if (savedEmail) {
+    emailInput.value = savedEmail;
+  }
+  
+}
+
+// Auto-run on load
+loadStudentInfoFromQuiz();
+
+</script>
+</body>
+</html>

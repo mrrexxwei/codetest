@@ -1,0 +1,8 @@
+[
+  {
+    "type": "mc",
+    "text": "MBR support up to ____ partitions. (7 points)",
+    "options": ["6", "2", "4", "128"],
+    "answer": "4"
+  }
+]

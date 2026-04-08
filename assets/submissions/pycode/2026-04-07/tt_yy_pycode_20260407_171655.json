@@ -1,0 +1,23 @@
+{
+  "name": "tt yy",
+  "email": "yt@gmail.com",
+  "tasks": [
+    {
+      "id": "task-1",
+      "name": "Task 1",
+      "code": "# You are given the following matrix\n# Write 3 functions that does below tasks:\n# Task 1 - calculate the sum of a specific row\n# Task 2 - calculate the sum of a specific column\n# Task 3 - calculate the sum of the main diagonal\n\nmatrix = [\n    [2, 4, 6],\n    [1, 3, 5],\n    [7, 8, 9]\n]\n\n        "
+    },
+    {
+      "id": "task-2",
+      "name": "Task 2",
+      "code": "# Task 2\n# Write your solution below\n\n"
+    },
+    {
+      "id": "task-3",
+      "name": "Task 3",
+      "code": "# Task 3\n# Write your solution below\n\n"
+    }
+  ],
+  "timestamp": "2026-04-07T21:16:55.095Z",
+  "folder": "assets/submissions/pycode/2026-04-07"
+}

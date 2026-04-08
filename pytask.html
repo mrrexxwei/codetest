@@ -1,0 +1,1447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Online Python Interpreter</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <script src="https://cdn.jsdelivr.net/pyodide/v0.27.0/full/pyodide.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:         #081529;
+      --surface:    #0f1f3a;
+      --surface2:   #142d52;
+      --border:     #1f3d6f;
+      --accent:     #ffa500;
+      --accent2:    #ff8c00;
+      --green:      #4ade80;
+      --red:        #f87171;
+      --blue:       #60a5fa;
+      --muted:      #4a6a95;
+      --text:       #d0dce8;
+      --text-dim:   #7a8aa0;
+      --font-mono:  'DM Mono', monospace;
+      --font-sans:  'DM Sans', sans-serif;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-sans);
+      overflow: hidden;
+    }
+
+    /* ── NOISE OVERLAY ── */
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+      opacity: 0.025;
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    /* ── LAYOUT ── */
+    .app {
+      display: grid;
+      grid-template-rows: 56px 1fr;
+      height: 100vh;
+    }
+
+    /* ── HEADER ── */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      position: relative;
+      z-index: 10;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-family: var(--font-mono);
+      font-weight: 500;
+      font-size: 15px;
+      letter-spacing: -0.02em;
+      color: var(--text);
+    }
+
+    .logo-icon {
+      width: 28px; height: 28px;
+      background: var(--accent);
+      border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .status-pill {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-dim);
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      padding: 4px 12px;
+      border-radius: 20px;
+      transition: all 0.3s;
+    }
+
+    .status-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--muted);
+      transition: background 0.3s;
+    }
+
+    .status-pill.ready .status-dot  { background: var(--green); box-shadow: 0 0 6px var(--green); }
+    .status-pill.loading .status-dot { background: var(--accent); animation: pulse 1s infinite; }
+    .status-pill.error .status-dot  { background: var(--red); }
+
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+    .btn {
+      display: flex; align-items: center; gap: 7px;
+      font-family: var(--font-sans);
+      font-size: 13px;
+      font-weight: 500;
+      padding: 7px 16px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      transition: all 0.15s;
+      letter-spacing: 0.01em;
+    }
+
+    .btn-run {
+      background: var(--accent);
+      color: #0d0f14;
+    }
+    .btn-run:hover { background: var(--accent2); transform: translateY(-1px); }
+    .btn-run:active { transform: translateY(0); }
+    .btn-run:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    .btn-clear {
+      background: transparent;
+      color: var(--text-dim);
+      border: 1px solid var(--border);
+    }
+    .btn-clear:hover { border-color: var(--muted); color: var(--text); }
+
+    .btn-submit {
+      background: transparent;
+      color: var(--blue);
+      border: 1px solid var(--blue);
+    }
+    .btn-submit:hover { background: rgba(96,165,250,0.1); transform: translateY(-1px); }
+    .btn-submit:active { transform: translateY(0); }
+    .btn-submit:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+    /* ── SUBMIT MODAL ── */
+    .modal-backdrop {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.6);
+      backdrop-filter: blur(4px);
+      z-index: 500;
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.2s;
+    }
+    .modal-backdrop.open { opacity: 1; pointer-events: all; }
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 28px;
+      width: 480px;
+      max-width: calc(100vw - 40px);
+      transform: translateY(12px);
+      transition: transform 0.2s;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.5);
+    }
+    .modal-backdrop.open .modal { transform: translateY(0); }
+    .modal-title { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+    .modal-subtitle { font-size: 12px; color: var(--text-dim); font-family: var(--font-mono); margin-bottom: 20px; }
+    .field-label { font-size: 11px; font-family: var(--font-mono); color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 6px; }
+    .field-row { margin-bottom: 14px; }
+    .modal input, .modal select, .modal textarea {
+      width: 100%; background: var(--bg); border: 1px solid var(--border);
+      border-radius: 8px; color: var(--text); font-family: var(--font-mono);
+      font-size: 12.5px; padding: 9px 12px; outline: none; transition: border-color 0.15s;
+    }
+    .modal input:focus, .modal select:focus, .modal textarea:focus { border-color: var(--blue); }
+    .modal select option { background: var(--surface); }
+    .modal textarea { resize: vertical; min-height: 72px; line-height: 1.6; }
+    .modal-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border); }
+    .submit-result {
+      margin-top: 14px; padding: 10px 14px; border-radius: 8px;
+      font-family: var(--font-mono); font-size: 12px; line-height: 1.5;
+      display: none; word-break: break-all; white-space: pre-wrap;
+    }
+    .submit-result.ok  { background: rgba(74,222,128,0.08); border: 1px solid rgba(74,222,128,0.25); color: var(--green); display: block; }
+    .submit-result.err { background: rgba(248,113,113,0.08); border: 1px solid rgba(248,113,113,0.25); color: var(--red); display: block; }
+
+    /* ── MAIN CONTENT ── */
+    .workspace {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    .workspace-content {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    .panel-right {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .panel-description {
+      flex-shrink: 0;
+      overflow-y: auto;
+      border-bottom: 1px solid var(--border);
+      padding: 20px;
+      font-size: 13px;
+      line-height: 1.7;
+      color: var(--text);
+      max-height: 50vh;
+    }
+
+    .panel-description h2 {
+      margin-bottom: 12px;
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--accent);
+    }
+
+    .panel-description p {
+      margin-bottom: 10px;
+    }
+
+    .panel-description code {
+      background: var(--surface);
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: var(--font-mono);
+      color: var(--blue);
+    }
+
+    .panel-output-section {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── PANELS ── */
+    .panel {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 20px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--text-dim);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .panel-left { border-right: 1px solid var(--border); }
+
+    .line-numbers {
+      display: flex;
+      flex-direction: column;
+      padding: 20px 0;
+      min-width: 44px;
+      text-align: right;
+      padding-right: 12px;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      line-height: 1.7;
+      color: var(--muted);
+      user-select: none;
+      border-right: 1px solid var(--border);
+      background: var(--surface);
+      overflow: hidden;
+    }
+
+    .editor-row {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    textarea#editor {
+      flex: 1;
+      resize: none;
+      background: var(--surface);
+      color: var(--text);
+      border: none;
+      outline: none;
+      font-family: var(--font-mono);
+      font-size: 13.5px;
+      line-height: 1.7;
+      padding: 20px 20px 20px 16px;
+      tab-size: 4;
+      caret-color: var(--accent);
+      overflow-y: auto;
+      white-space: pre;
+      overflow-x: auto;
+    }
+
+    textarea#editor::selection {
+      background: rgba(247, 201, 72, 0.18);
+    }
+
+    textarea#editor::-webkit-scrollbar,
+    #output::-webkit-scrollbar { width: 6px; height: 6px; }
+    textarea#editor::-webkit-scrollbar-track,
+    #output::-webkit-scrollbar-track { background: transparent; }
+    textarea#editor::-webkit-scrollbar-thumb,
+    #output::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    /* ── OUTPUT ── */
+    #output {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      line-height: 1.7;
+      background: var(--bg);
+    }
+
+    .output-header {
+      padding: 10px 20px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--text-dim);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      flex-shrink: 0;
+    }
+
+    .output-empty {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      gap: 12px;
+      color: var(--text-dim);
+      opacity: 0.5;
+    }
+
+    .output-empty-icon { font-size: 36px; }
+    .output-empty-text { font-size: 13px; font-family: var(--font-mono); }
+
+    .output-block {
+      animation: fadeIn 0.2s ease;
+    }
+
+    @keyframes fadeIn { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:none} }
+
+    .output-line { white-space: pre-wrap; word-break: break-word; }
+    .output-line.stdout { color: var(--text); }
+    .output-line.stderr { color: var(--red); }
+
+    .output-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 16px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+      font-size: 11px;
+      color: var(--text-dim);
+      font-family: var(--font-mono);
+    }
+
+    .output-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 2px 9px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-family: var(--font-mono);
+    }
+    .badge-ok  { background: rgba(74,222,128,0.12); color: var(--green); }
+    .badge-err { background: rgba(248,113,113,0.12); color: var(--red); }
+
+    /* ── LOADING SCREEN ── */
+    #loading-screen {
+      position: fixed; inset: 0;
+      background: var(--bg);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 24px;
+      z-index: 1000;
+      transition: opacity 0.6s ease;
+    }
+
+    #loading-screen.hidden { opacity: 0; pointer-events: none; }
+
+    .loading-logo {
+      font-family: var(--font-mono);
+      font-size: 28px;
+      font-weight: 500;
+      color: var(--accent);
+      letter-spacing: -0.03em;
+    }
+
+    .loading-bar-wrap {
+      width: 240px;
+      height: 3px;
+      background: var(--border);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .loading-bar {
+      height: 100%;
+      background: var(--accent);
+      border-radius: 3px;
+      width: 0%;
+      transition: width 0.4s ease;
+    }
+
+    .loading-label {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text-dim);
+    }
+
+    /* ── SNIPPETS ── */
+    .snippet-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+      overflow-x: auto;
+    }
+
+    .snippet-label {
+      font-size: 11px;
+      font-family: var(--font-mono);
+      color: var(--text-dim);
+      white-space: nowrap;
+      margin-right: 4px;
+    }
+
+    .snippet-btn {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      padding: 4px 11px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-dim);
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s;
+    }
+
+    .snippet-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: rgba(247,201,72,0.06);
+    }
+
+    /* ── TOAST ── */
+    #toast {
+      position: fixed;
+      bottom: 28px;
+      left: 50%;
+      transform: translateX(-50%) translateY(12px);
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      padding: 9px 18px;
+      border-radius: 20px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s, transform 0.2s;
+      white-space: nowrap;
+      z-index: 9998;
+    }
+    #toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* run flash */
+    @keyframes runFlash {
+      0%   { box-shadow: 0 0 0 0 rgba(247,201,72,0.4); }
+      70%  { box-shadow: 0 0 0 8px rgba(247,201,72,0); }
+      100% { box-shadow: 0 0 0 0 rgba(247,201,72,0); }
+    }
+    .flash { animation: runFlash 0.5s ease; }
+
+    .hide-content {
+      display: none;
+    }
+
+    /* ── TABS ── */
+    .tabs-container {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 0 24px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      overflow-x: auto;
+      height: 44px;
+      flex-shrink: 0;
+    }
+
+    .tabs-container::-webkit-scrollbar {
+      height: 4px;
+    }
+    .tabs-container::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 2px;
+    }
+
+    .tab-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      background: transparent;
+      border: none;
+      border-bottom: 2px solid transparent;
+      color: var(--text-dim);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+
+    .tab-item:hover {
+      color: var(--text);
+      border-bottom-color: var(--border);
+    }
+
+    .tab-item.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+
+    .tab-close {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 18px;
+      height: 18px;
+      border-radius: 3px;
+      cursor: pointer;
+      opacity: 0;
+      transition: all 0.15s;
+    }
+
+    .tab-item:hover .tab-close {
+      opacity: 1;
+    }
+
+    .tab-close:hover {
+      background: rgba(248,113,113,0.2);
+      color: var(--red);
+    }
+
+    .add-tab-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      border: none;
+      background: transparent;
+      color: var(--text-dim);
+      font-size: 18px;
+      cursor: pointer;
+      transition: all 0.15s;
+      margin-left: auto;
+      flex-shrink: 0;
+    }
+
+    .add-tab-btn:hover {
+      background: rgba(247,201,72,0.1);
+      color: var(--accent);
+    }
+  </style>
+</head>
+<body>
+
+<!-- LOADING SCREEN -->
+<div id="loading-screen">
+  <div class="loading-logo">PyCode</div>
+  <div class="loading-bar-wrap"><div class="loading-bar" id="loading-bar"></div></div>
+  <div class="loading-label" id="loading-label">Initialising Pyodide…</div>
+</div>
+
+<div class="app">
+  <!-- HEADER -->
+  <header>
+    <div class="logo">
+      <!-- <div class="logo-icon"></div> -->
+      PyCode
+    </div>
+    <div class="header-actions">
+      <div class="status-pill loading" id="status-pill">
+        <div class="status-dot"></div>
+        <span id="status-text">Loading Python…</span>
+      </div>
+      <button class="btn btn-clear" id="btn-clear">Clear</button>
+      <button class="btn btn-run" id="btn-run" disabled>▶ Run</button>
+      <button class="btn btn-submit" id="btn-submit">⬆ Submit</button>
+    </div>
+  </header>
+
+  <!-- WORKSPACE -->
+  <div class="workspace">
+
+    <!-- TABS -->
+    <div class="tabs-container" id="tabs-container">
+      <button class="tab-item active" data-task-id="task-1" onclick="switchTask('task-1')">
+        Task 1
+        <span class="tab-close" onclick="closeTask(event, 'task-1')">✕</span>
+      </button>
+      <button class="add-tab-btn" id="add-tab-btn" onclick="addNewTask()">+</button>
+    </div>
+
+    <!-- EDITOR & OUTPUT -->
+    <div class="workspace-content">
+    <div class="panel panel-left">
+      <div class="panel-header">
+        <span>editor.py</span>
+        <span id="cursor-pos">Ln 1, Col 1</span>
+      </div>
+      <div class="editor-row">
+        <div class="line-numbers" id="line-numbers">1</div>
+        <textarea id="editor" spellcheck="false" autocorrect="off" autocapitalize="off">
+# You are given the following matrix
+# Write 3 functions that does below tasks:
+# Task 1 - calculate the sum of a specific row
+# Task 2 - calculate the sum of a specific column
+# Task 3 - calculate the sum of the main diagonal
+
+matrix = [
+    [2, 4, 6],
+    [1, 3, 5],
+    [7, 8, 9]
+]
+
+        </textarea>
+      </div>
+      <div class="snippet-bar" style="display: none;">
+        <span class="snippet-label">snippets →</span>
+        <button class="snippet-btn" data-snippet="hello">Hello World</button>
+        <button class="snippet-btn" data-snippet="list">List Ops</button>
+        <button class="snippet-btn" data-snippet="dict">Dictionary</button>
+        <button class="snippet-btn" data-snippet="class">Class</button>
+        <button class="snippet-btn" data-snippet="math">Math</button>
+      </div>
+    </div>
+
+    <!-- RIGHT: TASK DESCRIPTION AND OUTPUT -->
+    <div class="panel-right">
+      <div class="panel-description" id="task-description">
+        <h2>Task Description</h2>
+        <p>Write the required Python code in the editor on the left.</p>
+      </div>
+      <div class="panel-output-section">
+        <div class="output-header">
+          <span>output</span>
+          <span id="exec-time"></span>
+        </div>
+        <div id="output">
+          <div class="output-empty" id="output-empty">
+            <div class="output-empty-icon">▶</div>
+            <div class="output-empty-text">press run to execute</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    </div><!-- workspace-content -->
+  </div><!-- workspace -->
+</div>
+
+<div id="toast"></div>
+
+<!-- SUBMIT MODAL -->
+<div class="modal-backdrop" id="submit-modal">
+  <div class="modal">
+    <div class="modal-title">Submit Code</div>
+    <div class="modal-subtitle">Ready to send the code?</div>
+
+    <div class="modal-row">
+      <div class="field-row">
+        <div class="field-label">Name <span style="opacity:0.5">(required)</span></div>
+        <input type="text" id="user-name" placeholder="Jane Smith" />
+      </div>
+      <div class="field-row">
+        <div class="field-label">Email <span style="opacity:0.5">(required)</span></div>
+        <input type="email" id="user-email" placeholder="jane@example.com" />
+      </div>
+    </div>
+
+    <div class="modal-row hide-content">
+      <div class="field-row">
+        <div class="field-label">Method</div>
+        <select id="api-method">
+          <option value="POST">POST</option>
+          <option value="PUT">PUT</option>
+          <option value="PATCH">PATCH</option>
+        </select>
+      </div>
+      <div class="field-row" style="grid-column: span 1"></div>
+    </div>
+
+    <div class="field-row hide-content">
+      <div class="field-label">API Endpoint URL</div>
+      <input type="text" id="api-url" placeholder="https://your-api.com/submit" />
+    </div>
+
+    <div class="field-row hide-content">
+      <div class="field-label">Headers <span style="opacity:0.5">(JSON, optional)</span></div>
+      <textarea id="api-headers" placeholder='{"Authorization": "Bearer YOUR_TOKEN", "X-Custom": "value"}'></textarea>
+    </div>
+
+    <div class="field-row hide-content">
+      <div class="field-label">Payload Preview <span style="opacity:0.5">(read-only)</span></div>
+      <textarea id="api-payload-preview" readonly style="opacity:0.6; min-height:56px;"></textarea>
+    </div>
+
+    <div id="submit-result" class="submit-result"></div>
+
+    <div class="modal-actions">
+      <button class="btn btn-clear" id="modal-cancel">Cancel</button>
+      <button class="btn btn-submit" id="modal-send" style="font-size:13px;">Send</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ── MULTI-TAB TASK SYSTEM ──
+  let tasks = {};
+  let currentTaskId = 'task-1';
+  let taskCounter = 0;
+
+  // Load questions from ques_code.json
+  async function loadQuestions() {
+    try {
+      const response = await fetch('./assets/questions/ques_pycd.json');
+      const questions = await response.json();
+      
+      // Create tasks from questions
+      questions.forEach((question, index) => {
+        taskCounter++;
+        const taskId = `task-${taskCounter}`;
+        tasks[taskId] = {
+          name: `Task ${taskCounter}`,
+          description: formatDescription(question.text),
+          code: `# Task ${taskCounter}\n# Write your solution below\n\n`,
+          output: '',
+          cursorPos: { line: 1, col: 1 }
+        };
+      });
+
+      // Update tabs container with loaded tasks
+      updateTabsFromTasks();
+      
+      // Load the first task
+      if (taskCounter > 0) {
+        currentTaskId = 'task-1';
+        switchTask('task-1');
+      }
+    } catch (error) {
+      console.error('Error loading questions:', error);
+      // Fallback to default task if JSON fails to load
+      createDefaultTask();
+    }
+  }
+
+  // Format the description text to HTML
+  function formatDescription(text) {
+    if (!text) return '<p>No description available.</p>';
+    
+    // Convert markdown-style code blocks to HTML pre tags
+    let html = text.replace(/```([^`]+)```/g, '<pre style="background: var(--surface); padding: 12px; border-radius: 6px; overflow-x: auto; margin: 10px 0;">$1</pre>');
+    
+    // Convert newlines to paragraphs
+    html = html.split('\n\n').map(para => {
+      if (para.includes('<pre')) return para;
+      return para.trim() ? `<p>${para.replace(/\n/g, '<br>')}</p>` : '';
+    }).join('');
+    
+    return html;
+  }
+
+  // Update tabs container with loaded tasks
+  function updateTabsFromTasks() {
+    const tabsContainer = document.getElementById('tabs-container');
+    // Clear existing tabs except the add button
+    const addBtn = document.getElementById('add-tab-btn');
+    tabsContainer.innerHTML = '';
+    
+    // Create tabs for each task
+    Object.entries(tasks).forEach(([taskId, task]) => {
+      const tab = document.createElement('button');
+      tab.className = 'tab-item';
+      tab.dataset.taskId = taskId;
+      tab.onclick = function() { switchTask(taskId); };
+      tab.innerHTML = `
+        ${task.name}
+        <span class="tab-close" onclick="closeTask(event, '${taskId}')">✕</span>
+      `;
+      tabsContainer.appendChild(tab);
+    });
+    
+    // Set first tab as active
+    const firstTab = tabsContainer.querySelector('[data-task-id="task-1"]');
+    if (firstTab) {
+      firstTab.classList.add('active');
+    }
+    
+    // Add the add button at the end
+    tabsContainer.appendChild(addBtn);
+  }
+
+  // Create a default task if JSON fails
+  function createDefaultTask() {
+    taskCounter = 1;
+    tasks['task-1'] = {
+      name: 'Task 1',
+      description: `<h2>Matrix Operations</h2>
+<p>You are given the following matrix:</p>
+<pre style="background: var(--surface); padding: 12px; border-radius: 6px; overflow-x: auto;">
+matrix = [
+    [2, 4, 6],
+    [1, 3, 5],
+    [7, 8, 9]
+]
+</pre>
+<p><strong>Write 3 functions that do the following tasks:</strong></p>
+<p><code>rowSum(matrix, row_index)</code> - Calculate the sum of a specific row</p>
+<p><code>colSum(matrix, col_index)</code> - Calculate the sum of a specific column</p>
+<p><code>diagSum(matrix)</code> - Calculate the sum of the main diagonal</p>`,
+      code: `# You are given the following matrix
+# Write 3 functions that does below tasks:
+# Task 1 - calculate the sum of a specific row
+# Task 2 - calculate the sum of a specific column
+# Task 3 - calculate the sum of the main diagonal
+
+matrix = [
+    [2, 4, 6],
+    [1, 3, 5],
+    [7, 8, 9]
+]`,
+      output: '',
+      cursorPos: { line: 1, col: 1 }
+    };
+    currentTaskId = 'task-1';
+  }
+
+  function addNewTask() {
+    taskCounter++;
+    const newTaskId = `task-${taskCounter}`;
+    tasks[newTaskId] = {
+      name: `Task ${taskCounter}`,
+      description: `<h2>Task ${taskCounter}</h2><p>Write your Python code to solve this task.</p>`,
+      code: '# New task\n',
+      output: '',
+      cursorPos: { line: 1, col: 1 }
+    };
+
+    const tabsContainer = document.getElementById('tabs-container');
+    const newTab = document.createElement('button');
+    newTab.className = 'tab-item active';
+    newTab.dataset.taskId = newTaskId;
+    newTab.onclick = function() { switchTask(newTaskId); };
+    newTab.innerHTML = `
+      ${tasks[newTaskId].name}
+      <span class="tab-close" onclick="closeTask(event, '${newTaskId}')">✕</span>
+    `;
+
+    // Insert before the add button
+    const addBtn = document.getElementById('add-tab-btn');
+    tabsContainer.insertBefore(newTab, addBtn);
+
+    switchTask(newTaskId);
+  }
+
+  function switchTask(taskId) {
+    if (!tasks[taskId]) return;
+
+    // Save current task state
+    const editor = document.getElementById('editor');
+    if (tasks[currentTaskId]) {
+      tasks[currentTaskId].code = editor.value;
+      tasks[currentTaskId].cursorPos = {
+        line: editor.selectionStart,
+        col: editor.selectionEnd
+      };
+    }
+
+    // Update active tab
+    document.querySelectorAll('.tab-item').forEach(tab => {
+      tab.classList.toggle('active', tab.dataset.taskId === taskId);
+    });
+
+    // Load new task
+    currentTaskId = taskId;
+    editor.value = tasks[taskId].code;
+    document.querySelector('[data-task-id="' + taskId + '"]').textContent = tasks[taskId].name.split('\n')[0];
+    
+    // Update task description
+    const descriptionEl = document.getElementById('task-description');
+    if (tasks[taskId].description) {
+      descriptionEl.innerHTML = tasks[taskId].description;
+    } else {
+      descriptionEl.innerHTML = `<h2>${escapeHtml(tasks[taskId].name)}</h2><p>Write your Python code to solve this task.</p>`;
+    }
+    
+    const output = document.getElementById('output');
+    output.innerHTML = tasks[taskId].output || `<div class="output-empty" id="output-empty">
+      <div class="output-empty-icon">▶</div>
+      <div class="output-empty-text">press run to execute</div>
+    </div>`;
+
+    // Update line numbers and cursor
+    updateLineNumbers();
+    setTimeout(() => {
+      if (tasks[taskId].cursorPos) {
+        editor.selectionStart = editor.selectionEnd = 0;
+      }
+      editor.focus();
+    }, 0);
+  }
+
+  function closeTask(event, taskId) {
+    event.stopPropagation();
+    
+    if (Object.keys(tasks).length === 1) {
+      showToast('⛔️ Cannot close the last task! ⛔️');
+      return;
+    }
+
+    delete tasks[taskId];
+
+    // Remove tab
+    const tab = document.querySelector(`[data-task-id="${taskId}"]`);
+    if (tab) tab.remove();
+
+    // Switch to another task
+    const remainingTasks = Object.keys(tasks);
+    if (currentTaskId === taskId) {
+      switchTask(remainingTasks[0]);
+    }
+  }
+
+  // ── DISABLE INSPECT & DEVELOPER TOOLS ──
+  // Block F12 (Dev Tools)
+  document.addEventListener('keydown', e => {
+    if (e.key === 'F12') {
+      e.preventDefault();
+      showToast('⛔️ Developer Tools disabled! ⛔️');
+    }
+    // Block Ctrl+Shift+I (Inspect Element)
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'I') {
+      e.preventDefault();
+      showToast('⛔️ Inspector disabled! ⛔️');
+    }
+    // Block Ctrl+Shift+C (Inspect Element - Firefox)
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'C') {
+      e.preventDefault();
+      showToast('⛔️ Inspector disabled! ⛔️');
+    }
+    // Block Ctrl+Shift+K (Console)
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'K') {
+      e.preventDefault();
+      showToast('⛔️ Console disabled! ⛔️');
+    }
+    // Block Ctrl+Shift+J (Console - Chrome)
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'J') {
+      e.preventDefault();
+      showToast('⛔️ Console disabled! ⛔️');
+    }
+  });
+
+  // Block right-click context menu
+  document.addEventListener('contextmenu', e => {
+    e.preventDefault();
+    showToast('⛔️ Context menu disabled! ⛔️');
+  });
+
+  // ── TOAST ──
+  let toastTimer;
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
+  }
+
+  // ── LINE NUMBERS ──
+  const editor = document.getElementById('editor');
+  const lineNumbers = document.getElementById('line-numbers');
+  const cursorPos = document.getElementById('cursor-pos');
+
+  function updateLineNumbers() {
+    const lines = editor.value.split('\n').length;
+    lineNumbers.innerHTML = Array.from({length: lines}, (_, i) => i + 1).join('<br>');
+    lineNumbers.style.minWidth = (String(lines).length * 9 + 24) + 'px';
+  }
+
+  function updateCursor() {
+    const text = editor.value.substring(0, editor.selectionStart);
+    const ln = text.split('\n').length;
+    const col = text.split('\n').pop().length + 1;
+    cursorPos.textContent = `Ln ${ln}, Col ${col}`;
+  }
+
+  editor.addEventListener('input', updateLineNumbers);
+  editor.addEventListener('click', updateCursor);
+  editor.addEventListener('keyup', updateCursor);
+
+  // Tab key support
+  editor.addEventListener('keydown', e => {
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      const s = editor.selectionStart, end = editor.selectionEnd;
+      editor.value = editor.value.substring(0, s) + '    ' + editor.value.substring(end);
+      editor.selectionStart = editor.selectionEnd = s + 4;
+      updateLineNumbers();
+    }
+    // Ctrl/Cmd+Enter to run
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+      document.getElementById('btn-run').click();
+    }
+  });
+
+  // Block paste
+  editor.addEventListener('paste', e => {
+    e.preventDefault();
+    showToast('⛔️ Pasting not allowed! ⛔️');
+  });
+
+  // Block copy
+  editor.addEventListener('copy', e => {
+    e.preventDefault();
+    showToast('⛔️ Copying not allowed! ⛔️');
+  });
+
+  // Block cut
+  editor.addEventListener('cut', e => {
+    e.preventDefault();
+    showToast('⛔️ Cutting not allowed! ⛔️');
+  });
+
+  // Sync scroll
+  editor.addEventListener('scroll', () => {
+    lineNumbers.style.transform = `translateY(-${editor.scrollTop}px)`;
+  });
+
+  updateLineNumbers();
+
+  // ── SNIPPETS ──
+  document.querySelectorAll('.snippet-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      editor.value = SNIPPETS[btn.dataset.snippet] || '';
+      updateLineNumbers();
+      editor.focus();
+    });
+  });
+
+  // ── CLEAR ──
+  document.getElementById('btn-clear').addEventListener('click', () => {
+    const output = document.getElementById('output');
+    const emptyHtml = `<div class="output-empty" id="output-empty">
+      <div class="output-empty-icon">▶</div>
+      <div class="output-empty-text">press run to execute</div>
+    </div>`;
+    output.innerHTML = emptyHtml;
+    document.getElementById('exec-time').textContent = '';
+    
+    // Save cleared state to current task
+    if (tasks[currentTaskId]) {
+      tasks[currentTaskId].output = emptyHtml;
+    }
+  });
+
+  // ── PYODIDE INIT ──
+  let pyodide = null;
+  const loadingBar = document.getElementById('loading-bar');
+  const loadingLabel = document.getElementById('loading-label');
+
+  async function loadPyodideEngine() {
+    loadingBar.style.width = '20%';
+    loadingLabel.textContent = 'Setting up Python…';
+
+    pyodide = await loadPyodide({
+      indexURL: 'https://cdn.jsdelivr.net/pyodide/v0.27.0/full/'
+    });
+
+    loadingBar.style.width = '80%';
+    loadingLabel.textContent = 'Setting up environment…';
+
+    // Redirect stdout/stderr
+    pyodide.runPython(`
+      import sys, io
+      class _Capture(io.StringIO):
+          pass
+      sys.stdout = _Capture()
+      sys.stderr = _Capture()
+    `);
+
+    loadingBar.style.width = '100%';
+    loadingLabel.textContent = 'Ready!';
+
+    await new Promise(r => setTimeout(r, 500));
+
+    // Hide loading screen
+    document.getElementById('loading-screen').classList.add('hidden');
+
+    // Update status
+    const pill = document.getElementById('status-pill');
+    pill.className = 'status-pill ready';
+    document.getElementById('status-text').textContent = 'Python';
+
+    // Enable run
+    const runBtn = document.getElementById('btn-run');
+    runBtn.disabled = false;
+    runBtn.addEventListener('click', runCode);
+  }
+
+  // ── RUN CODE ──
+  async function runCode() {
+    if (!pyodide) return;
+    const code = editor.value.trim();
+    if (!code) return;
+
+    const runBtn = document.getElementById('btn-run');
+    runBtn.disabled = true;
+    runBtn.textContent = '⏳ Running…';
+
+    // Flash effect
+    document.getElementById('editor').classList.add('flash');
+    setTimeout(() => document.getElementById('editor').classList.remove('flash'), 500);
+
+    // Clear captured output
+    pyodide.runPython(`sys.stdout.truncate(0); sys.stdout.seek(0); sys.stderr.truncate(0); sys.stderr.seek(0)`);
+
+    const t0 = performance.now();
+    let hasError = false;
+    let errorMsg = '';
+
+    try {
+      await pyodide.runPythonAsync(code);
+    } catch (err) {
+      hasError = true;
+      errorMsg = err.message;
+    }
+
+    const elapsed = ((performance.now() - t0) / 1000).toFixed(3);
+
+    const stdout = pyodide.runPython('sys.stdout.getvalue()');
+    const stderr = pyodide.runPython('sys.stderr.getvalue()');
+
+    renderOutput(stdout, stderr, hasError, errorMsg, elapsed);
+
+    runBtn.disabled = false;
+    runBtn.textContent = '▶ Run';
+  }
+
+  function renderOutput(stdout, stderr, hasError, errorMsg, elapsed) {
+    const output = document.getElementById('output');
+    const lines = [];
+
+    if (stdout) {
+      stdout.split('\n').forEach(line => {
+        lines.push(`<div class="output-line stdout">${escapeHtml(line)}</div>`);
+      });
+    }
+
+    if (stderr) {
+      stderr.split('\n').filter(Boolean).forEach(line => {
+        lines.push(`<div class="output-line stderr">${escapeHtml(line)}</div>`);
+      });
+    }
+
+    if (hasError && !stderr) {
+      errorMsg.split('\n').forEach(line => {
+        lines.push(`<div class="output-line stderr">${escapeHtml(line)}</div>`);
+      });
+    }
+
+    if (lines.length === 0 && !hasError) {
+      lines.push(`<div class="output-line" style="color:var(--text-dim);font-style:italic;">(no output)</div>`);
+    }
+
+    const badge = hasError
+      ? `<span class="output-badge badge-err">✕ Error</span>`
+      : `<span class="output-badge badge-ok">✓ OK</span>`;
+
+    const outputHtml = `
+      <div class="output-block">
+        ${lines.join('')}
+        <div class="output-meta">
+          ${badge}
+          <span>Executed in ${elapsed}s</span>
+        </div>
+      </div>`;
+
+    output.innerHTML = outputHtml;
+    
+    // Save output to current task
+    if (tasks[currentTaskId]) {
+      tasks[currentTaskId].output = outputHtml;
+    }
+
+    document.getElementById('exec-time').textContent = `${elapsed}s`;
+  }
+
+  function escapeHtml(str) {
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+
+  // ── SUBMIT ──
+  // ↓↓↓ CONFIGURE YOUR API HERE ↓↓↓
+  const API_CONFIG = {
+    url: `${location.protocol}//${location.hostname}:5000/submit-code`,          // e.g. 'https://your-api.com/submit'
+    method: 'POST',   // POST | PUT | PATCH
+    headers: {        // add any default headers here
+      'Content-Type': 'application/json',
+    },
+    // buildPayload: customize what gets sent to your API
+    buildPayload(allTasks, name, email) {
+      const today = new Date();
+      const dateFolder = today.toISOString().split('T')[0]; // YYYY-MM-DD format
+      
+      return {
+        name,
+        email,
+        tasks: allTasks,
+        timestamp: new Date().toISOString(),
+        folder: `assets/submissions/pycode/${dateFolder}`,
+      };
+    }
+  };
+  // ↑↑↑ END CONFIG ↑↑↑
+
+  function openSubmitModal() {
+    const modal = document.getElementById('submit-modal');
+    const urlInput = document.getElementById('api-url');
+    const methodSel = document.getElementById('api-method');
+    const headersInput = document.getElementById('api-headers');
+    const preview = document.getElementById('api-payload-preview');
+    const result = document.getElementById('submit-result');
+
+    // Pre-fill from config
+    urlInput.value = API_CONFIG.url || '';
+    methodSel.value = API_CONFIG.method || 'POST';
+    headersInput.value = Object.keys(API_CONFIG.headers).filter(k => k !== 'Content-Type').length
+      ? JSON.stringify(Object.fromEntries(Object.entries(API_CONFIG.headers).filter(([k]) => k !== 'Content-Type')), null, 2)
+      : '';
+
+    // Build payload preview
+    const allTasksArray = Object.entries(tasks).map(([id, task]) => ({
+      id,
+      name: task.name,
+      code: task.code
+    }));
+    const payload = API_CONFIG.buildPayload(allTasksArray, '', '');
+    preview.value = JSON.stringify(payload, null, 2);
+
+    result.className = 'submit-result';
+    result.textContent = '';
+
+    modal.classList.add('open');
+  }
+
+  // Live payload preview update as user types name/email
+  ['user-name', 'user-email'].forEach(id => {
+    console.log('Adding listener to', id);
+    document.getElementById(id).addEventListener('input', () => {
+      const name  = document.getElementById('user-name').value.trim();
+      const email = document.getElementById('user-email').value.trim();
+      const allTasksArray = Object.entries(tasks).map(([id, task]) => ({
+        id,
+        name: task.name,
+        code: task.code
+      }));
+      document.getElementById('api-payload-preview').value =
+        JSON.stringify(API_CONFIG.buildPayload(allTasksArray, name, email), null, 2);
+    });
+  });
+
+  async function sendToApi() {
+    const url = document.getElementById('api-url').value.trim();
+    const method = document.getElementById('api-method').value;
+    const headersRaw = document.getElementById('api-headers').value.trim();
+    const name  = document.getElementById('user-name').value.trim();
+    const email = document.getElementById('user-email').value.trim();
+    const result = document.getElementById('submit-result');
+    const sendBtn = document.getElementById('modal-send');
+
+    if (!name) {
+      result.className = 'submit-result err';
+      result.textContent = 'Error: Please enter your name.';
+      return;
+    }
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      result.className = 'submit-result err';
+      result.textContent = 'Error: Please enter a valid email address.';
+      return;
+    }
+    if (!url) {
+      result.className = 'submit-result err';
+      result.textContent = 'Error: Please enter an API endpoint URL.';
+      return;
+    }
+
+    let extraHeaders = {};
+    if (headersRaw) {
+      try { extraHeaders = JSON.parse(headersRaw); }
+      catch { result.className = 'submit-result err'; result.textContent = 'Error: Invalid JSON in headers.'; return; }
+    }
+
+    // Save current editor state before submitting
+    if (tasks[currentTaskId]) {
+      tasks[currentTaskId].code = editor.value;
+    }
+
+    // Prepare all tasks for submission
+    const allTasksArray = Object.entries(tasks).map(([id, task]) => ({
+      id,
+      name: task.name,
+      code: task.code
+    }));
+
+    const payload = API_CONFIG.buildPayload(allTasksArray, name, email);
+    const headers = { 'Content-Type': 'application/json', ...extraHeaders };
+
+    sendBtn.disabled = true;
+    sendBtn.textContent = '⏳ Sending…';
+    result.className = 'submit-result';
+    result.textContent = '';
+
+    try {
+      const res = await fetch(url, {
+        method,
+        headers,
+        body: JSON.stringify(payload),
+      });
+
+      const text = await res.text();
+      let pretty = text;
+      try { pretty = JSON.stringify(JSON.parse(text), null, 2); } catch(_) {}
+
+      if (res.ok) {
+        result.className = 'submit-result ok';
+        result.textContent = `✓ ${res.status} ${res.statusText}\n\n${pretty}`;
+        showToast('Code submitted successfully ✓');
+        //alert('✅All set! Submission successful!✅'); // Optional alert
+        window.location.href = "./done.html";
+        alert("✅Your are all set!✅");
+      } else {
+        result.className = 'submit-result err';
+        result.textContent = `✕ ${res.status} ${res.statusText}\n\n${pretty}`;
+      }
+    } catch (err) {
+      result.className = 'submit-result err';
+      result.textContent = `Network error: ${err.message}`;
+    }
+
+    sendBtn.disabled = false;
+    sendBtn.textContent = 'Send⬆';
+  }
+
+  document.getElementById('btn-submit').addEventListener('click', openSubmitModal);
+  document.getElementById('modal-cancel').addEventListener('click', () => {
+    document.getElementById('submit-modal').classList.remove('open');
+  });
+  document.getElementById('submit-modal').addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) e.currentTarget.classList.remove('open');
+  });
+  document.getElementById('modal-send').addEventListener('click', sendToApi);
+
+  // ── LOAD STUDENT INFO FROM QUIZ ──
+  function loadStudentInfoFromQuiz() {
+    const nameInput = document.getElementById('user-name');
+    const emailInput = document.getElementById('user-email');
+    const savedName = localStorage.getItem('quiz_student_name');
+    const savedEmail = localStorage.getItem('quiz_student_email');
+    
+    if (savedName) {
+      nameInput.value = savedName;
+    }
+    if (savedEmail) {
+      emailInput.value = savedEmail;
+    }
+  }
+
+  // Load student info on page load
+  loadStudentInfoFromQuiz();
+
+  // Boot - Load questions first, then initialize Pyodide
+  async function boot() {
+    await loadQuestions();
+    await loadPyodideEngine();
+  }
+
+  boot();
+</script>
+
+</body>
+</html>

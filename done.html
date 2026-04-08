@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>WebPad — HTML / CSS / JS Playground</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;500&family=Syne:wght@400;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #111218;
+      --surface:   #17191f;
+      --border:    #2a2d3a;
+      --text:      #c8cfe8;
+      --font-ui:   'Syne', sans-serif;
+    }
+
+    html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--font-ui); overflow: hidden; }
+
+    /* grain */
+    body::after {
+      content: '';
+      position: fixed; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      opacity: 0.022; pointer-events: none; z-index: 9999;
+    }
+
+    /* ── APP SHELL ── */
+    .app { display: grid; grid-template-rows: 52px 1fr; height: 100vh; }
+
+    /* ── HEADER ── */
+    header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 20px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      position: relative; z-index: 10;
+    }
+
+    .logo {
+      display: flex; align-items: center; gap: 10px;
+      font-family: var(--font-ui); font-weight: 700; font-size: 16px;
+      letter-spacing: -0.03em;
+    }
+    .logo-badges { display: flex; gap: 3px; }
+    .logo-badge {
+      width: 10px; height: 10px; border-radius: 50%;
+    }
+    .lb-h { background: #e8845a; }
+    .lb-c { background: #5ab4e8; }
+    .lb-j { background: #e8c95a; }
+
+    /* ── CARD ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 40px;
+      text-align: center;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+    .card h1 {
+      font-size: 32px;
+      font-weight: 700;
+      margin: 0;
+      color: var(--text);
+      line-height: 1.4;
+    }
+
+    </style>
+</head>
+<body>
+
+<div class="app">
+  <!-- HEADER -->
+  <header>
+    <div class="logo">
+      <div class="logo-badges">
+        <div class="logo-badge lb-h"></div>
+        <div class="logo-badge lb-c"></div>
+        <div class="logo-badge lb-j"></div>
+      </div>
+      eQuiz
+    </div>
+  </header>
+
+  <div style="display: flex; align-items: center; justify-content: center; height: 100%; padding: 20px;">
+    <div class="card">
+        <h1>📩 All set! 📌<br>You finished the quiz.</h1>
+    </div>
+  </div>
+</div>
+
+<script>
+
+// ── LOAD STUDENT INFO FROM QUIZ ──
+function loadStudentInfoFromQuiz() {
+  const nameInput = document.getElementById('name');
+  const emailInput = document.getElementById('email');
+  const savedName = localStorage.getItem('quiz_student_name');
+  const savedEmail = localStorage.getItem('quiz_student_email');
+  
+  if (savedName) {
+    nameInput.value = savedName;
+  }
+  if (savedEmail) {
+    emailInput.value = savedEmail;
+  }
+  
+}
+
+// Auto-run on load
+loadStudentInfoFromQuiz();
+
+</script>
+</body>
+</html>

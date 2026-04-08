@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>eQuiz — HTML / CSS / JS Playground</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;500&family=Syne:wght@400;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #111218;
+      --surface:   #17191f;
+      --surface2:  #1e2029;
+      --border:    #2a2d3a;
+      --html:      #e8845a;
+      --css:       #5ab4e8;
+      --js:        #e8c95a;
+      --green:     #5ae8a0;
+      --red:       #e85a7a;
+      --muted:     #3d4157;
+      --text:      #c8cfe8;
+      --text-dim:  #565d7a;
+      --font-mono: 'Fira Code', monospace;
+      --font-ui:   'Syne', sans-serif;
+    }
+
+    html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--font-ui); overflow: hidden; }
+
+    /* grain */
+    body::after {
+      content: '';
+      position: fixed; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      opacity: 0.022; pointer-events: none; z-index: 9999;
+    }
+
+    /* ── APP SHELL ── */
+    .app { display: grid; grid-template-rows: 52px 1fr; height: 100vh; }
+
+    /* ── HEADER ── */
+    header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 20px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      position: relative; z-index: 10;
+    }
+
+    .logo {
+      display: flex; align-items: center; gap: 10px;
+      font-family: var(--font-ui); font-weight: 700; font-size: 16px;
+      letter-spacing: -0.03em;
+    }
+    .logo-badges { display: flex; gap: 3px; }
+    .logo-badge {
+      width: 10px; height: 10px; border-radius: 50%;
+    }
+    .lb-h { background: var(--html); }
+    .lb-c { background: var(--css); }
+    .lb-j { background: var(--js); }
+
+    .header-center {
+      display: flex; align-items: center; gap: 6px;
+    }
+
+    .layout-btn {
+      display: flex; align-items: center; gap: 5px;
+      font-family: var(--font-mono); font-size: 11px;
+      padding: 5px 12px; border-radius: 6px;
+      border: 1px solid var(--border);
+      background: transparent; color: var(--text-dim);
+      cursor: pointer; transition: all 0.15s;
+    }
+    .layout-btn:hover, .layout-btn.active {
+      border-color: var(--muted); color: var(--text);
+      background: var(--surface2);
+    }
+    .layout-btn.active { color: var(--text); }
+
+    .header-actions { display: flex; align-items: center; gap: 8px; }
+
+    .btn {
+      display: flex; align-items: center; gap: 6px;
+      font-family: var(--font-ui); font-size: 13px; font-weight: 600;
+      padding: 7px 16px; border-radius: 8px; border: none;
+      cursor: pointer; transition: all 0.15s; letter-spacing: 0.01em;
+    }
+    .btn-run { background: var(--green); color: #0d1a12; }
+    .btn-run:hover { filter: brightness(1.1); transform: translateY(-1px); }
+    .btn-run:active { transform: none; }
+
+    .btn-ghost {
+      background: transparent; color: var(--text-dim);
+      border: 1px solid var(--border);
+    }
+    .btn-ghost:hover { border-color: var(--muted); color: var(--text); }
+
+    .btn-submit {
+      background: transparent; color: var(--css);
+      border: 1px solid var(--css);
+    }
+    .btn-submit:hover { background: rgba(90,180,232,0.08); transform: translateY(-1px); }
+    .btn-submit:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+    /* ── WORKSPACE ── */
+    .workspace {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: 1fr;
+      height: 100%;
+      overflow: hidden;
+      transition: grid-template-columns 0.3s ease;
+    }
+    .workspace.layout-preview { grid-template-columns: 0fr 1fr; }
+    .workspace.layout-editors { grid-template-columns: 1fr 0fr; }
+
+    /* ── EDITORS SIDE ── */
+    .editors-side {
+      display: grid;
+      grid-template-rows: 1fr 1fr 1fr;
+      border-right: 1px solid var(--border);
+      overflow: hidden;
+      transition: grid-template-rows 0.25s ease;
+    }
+
+    /* ── SINGLE EDITOR PANE ── */
+    .editor-pane {
+      display: flex; flex-direction: column;
+      overflow: hidden;
+      border-bottom: 1px solid var(--border);
+      transition: all 0.2s;
+    }
+    .editor-pane:last-child { border-bottom: none; }
+
+    .pane-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 14px;
+      height: 34px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .pane-tab {
+      display: flex; align-items: center; gap: 7px;
+      font-family: var(--font-mono); font-size: 11px; font-weight: 500;
+      letter-spacing: 0.04em;
+    }
+    .tab-dot { width: 8px; height: 8px; border-radius: 50%; }
+    .tab-dot.html { background: var(--html); box-shadow: 0 0 6px var(--html); }
+    .tab-dot.css  { background: var(--css);  box-shadow: 0 0 6px var(--css); }
+    .tab-dot.js   { background: var(--js);   box-shadow: 0 0 6px var(--js); }
+
+    .pane-collapse {
+      background: none; border: none; color: var(--text-dim);
+      font-size: 14px; cursor: pointer; padding: 2px 6px; border-radius: 4px;
+      transition: color 0.15s;
+    }
+    .pane-collapse:hover { color: var(--text); }
+
+    .editor-wrap {
+      display: flex; flex: 1; overflow: hidden;
+    }
+
+    .line-nums {
+      padding: 12px 0;
+      min-width: 40px;
+      text-align: right; padding-right: 10px;
+      font-family: var(--font-mono); font-size: 12px; line-height: 1.65;
+      color: var(--muted);
+      select: none;
+      border-right: 1px solid var(--border);
+      background: var(--surface);
+      overflow: hidden; flex-shrink: 0;
+    }
+
+    textarea.code-input {
+      flex: 1; resize: none;
+      background: var(--surface);
+      color: var(--text);
+      border: none; outline: none;
+      font-family: var(--font-mono); font-size: 12.5px; line-height: 1.65;
+      padding: 12px 14px 12px 12px;
+      tab-size: 2;
+      overflow-y: auto; overflow-x: auto;
+      white-space: pre;
+    }
+    textarea.code-input.html-ta { caret-color: var(--html); }
+    textarea.code-input.css-ta  { caret-color: var(--css); }
+    textarea.code-input.js-ta   { caret-color: var(--js); }
+
+    textarea.code-input::selection { background: rgba(255,255,255,0.08); }
+    textarea.code-input::-webkit-scrollbar { width: 5px; height: 5px; }
+    textarea.code-input::-webkit-scrollbar-track { background: transparent; }
+    textarea.code-input::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    /* collapsed pane */
+    .editor-pane.collapsed { grid-row: auto; }
+    .editor-pane.collapsed .editor-wrap { display: none; }
+    .editor-pane.collapsed .pane-header { border-bottom: none; }
+
+    /* ── PREVIEW SIDE ── */
+    .preview-side {
+      display: flex; flex-direction: column; overflow: hidden; background: #fff;
+    }
+
+    .task-description {
+      flex-shrink: 0;
+      overflow-y: auto;
+      padding: 16px 20px;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+      line-height: 1.6;
+      color: var(--text);
+    }
+
+    .task-description h2 {
+      margin-bottom: 10px;
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--green);
+    }
+
+    .task-description p {
+      margin-bottom: 8px;
+    }
+
+    .task-description code {
+      background: var(--surface);
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: var(--font-mono);
+      color: var(--css);
+    }
+
+    .preview-output-wrapper {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    .preview-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 14px; height: 34px;
+      background: var(--surface); border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .preview-label {
+      font-family: var(--font-mono); font-size: 11px;
+      color: var(--text-dim); letter-spacing: 0.06em; text-transform: uppercase;
+    }
+    .preview-url {
+      font-family: var(--font-mono); font-size: 10px;
+      color: var(--text-dim); background: var(--bg);
+      border: 1px solid var(--border); border-radius: 20px;
+      padding: 2px 10px;
+    }
+
+    iframe#preview {
+      flex: 1; border: none; width: 100%; background: #fff;
+    }
+
+    /* ── CONSOLE ── */
+    .console-pane {
+      height: 140px; flex-shrink: 0;
+      border-top: 1px solid var(--border);
+      background: var(--bg);
+      display: flex; flex-direction: column;
+      transition: height 0.2s;
+    }
+    .console-pane.hidden { height: 0; overflow: hidden; border-top: none; }
+
+    .console-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 14px; height: 30px;
+      background: var(--surface); border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .console-title {
+      font-family: var(--font-mono); font-size: 11px; color: var(--text-dim);
+      text-transform: uppercase; letter-spacing: 0.06em;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .console-count {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 10px; padding: 1px 7px; font-size: 10px; color: var(--text-dim);
+    }
+    .console-clear {
+      background: none; border: none; color: var(--text-dim);
+      font-family: var(--font-mono); font-size: 10px; cursor: pointer;
+      padding: 2px 6px; border-radius: 4px;
+    }
+    .console-clear:hover { color: var(--text); }
+
+    #console-output {
+      flex: 1; overflow-y: auto; padding: 6px 14px;
+      font-family: var(--font-mono); font-size: 11.5px; line-height: 1.6;
+    }
+    #console-output::-webkit-scrollbar { width: 4px; }
+    #console-output::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    .log-line { padding: 1px 0; display: flex; gap: 10px; align-items: baseline; }
+    .log-time { color: var(--text-dim); font-size: 10px; flex-shrink: 0; }
+    .log-msg  { color: var(--text); word-break: break-all; }
+    .log-line.log-error .log-msg { color: var(--red); }
+    .log-line.log-warn  .log-msg { color: var(--js); }
+    .log-line.log-info  .log-msg { color: var(--css); }
+
+    /* ── TOAST ── */
+    #toast {
+      position: fixed; bottom: 24px; left: 50%;
+      transform: translateX(-50%) translateY(10px);
+      background: var(--surface2); border: 1px solid var(--border);
+      color: var(--text); font-family: var(--font-mono); font-size: 12px;
+      padding: 8px 18px; border-radius: 20px;
+      opacity: 0; pointer-events: none; transition: all 0.2s;
+      white-space: nowrap; z-index: 9998;
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* ── SUBMIT MODAL ── */
+    .modal-backdrop {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.65);
+      backdrop-filter: blur(5px);
+      z-index: 500; display: flex; align-items: center; justify-content: center;
+      opacity: 0; pointer-events: none; transition: opacity 0.2s;
+    }
+    .modal-backdrop.open { opacity: 1; pointer-events: all; }
+    .modal {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 14px; padding: 28px; width: 500px;
+      max-width: calc(100vw - 40px);
+      transform: translateY(14px); transition: transform 0.2s;
+      box-shadow: 0 28px 72px rgba(0,0,0,0.55);
+    }
+    .modal-backdrop.open .modal { transform: translateY(0); }
+    .modal-title { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+    .modal-sub { font-size: 12px; color: var(--text-dim); font-family: var(--font-mono); margin-bottom: 20px; }
+    .field-label { font-size: 10px; font-family: var(--font-mono); color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 5px; }
+    .field-row { margin-bottom: 13px; }
+    .modal input, .modal select, .modal textarea {
+      width: 100%; background: var(--bg); border: 1px solid var(--border);
+      border-radius: 8px; color: var(--text); font-family: var(--font-mono);
+      font-size: 12px; padding: 8px 12px; outline: none; transition: border-color 0.15s;
+    }
+    .modal input:focus, .modal select:focus, .modal textarea:focus { border-color: var(--css); }
+    .modal select option { background: var(--surface); }
+    .modal textarea { resize: vertical; min-height: 68px; line-height: 1.6; }
+    .modal-row { display: grid; grid-template-columns: 120px 1fr; gap: 10px; }
+    .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border); }
+    .submit-result {
+      margin-top: 12px; padding: 10px 13px; border-radius: 8px;
+      font-family: var(--font-mono); font-size: 11.5px; line-height: 1.5;
+      display: none; word-break: break-all; white-space: pre-wrap;
+    }
+    .submit-result.ok  { background: rgba(90,232,160,0.07); border: 1px solid rgba(90,232,160,0.2); color: var(--green); display: block; }
+    .submit-result.err { background: rgba(232,90,122,0.07); border: 1px solid rgba(232,90,122,0.2); color: var(--red); display: block; }
+
+    /* run flash */
+    @keyframes runPulse {
+      0%   { outline: 2px solid transparent; }
+      40%  { outline: 2px solid var(--green); }
+      100% { outline: 2px solid transparent; }
+    }
+    .run-flash { animation: runPulse 0.5s ease; }
+  </style>
+</head>
+<body>
+
+<div class="app">
+  <!-- HEADER -->
+  <header>
+    <div class="logo">
+      <div class="logo-badges">
+        <div class="logo-badge lb-h"></div>
+        <div class="logo-badge lb-c"></div>
+        <div class="logo-badge lb-j"></div>
+      </div>
+      eQuiz
+    </div>
+
+    <div class="header-center">
+      <button class="layout-btn active" id="layout-split" title="Split view">⬛ Split</button>
+      <button class="layout-btn" id="layout-editors" title="Editors only">✏️ Editors</button>
+      <button class="layout-btn" id="layout-preview" title="Preview only">👁 Preview</button>
+    </div>
+
+    <div class="header-actions">
+      <button class="btn btn-ghost" id="btn-console">⌨ Console</button>
+      <button class="btn btn-ghost" id="btn-clear-all">Clear</button>
+      <button class="btn btn-submit" id="btn-submit">⬆ Submit</button>
+      <button class="btn btn-run" id="btn-run">▶ Run</button>
+    </div>
+  </header>
+
+  <!-- WORKSPACE -->
+  <div class="workspace" id="workspace">
+
+    <!-- LEFT: EDITORS -->
+    <div class="editors-side" id="editors-side">
+
+      <!-- HTML -->
+      <div class="editor-pane" id="pane-html">
+        <div class="pane-header">
+          <div class="pane-tab">
+            <div class="tab-dot html"></div>
+            index.html
+          </div>
+          <button class="pane-collapse" data-pane="html" title="Collapse">−</button>
+        </div>
+        <div class="editor-wrap">
+          <div class="line-nums" id="ln-html">1</div>
+          <textarea class="code-input html-ta" id="editor-html" spellcheck="false" autocorrect="off" autocapitalize="off"><!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>My Page</title>
+</head>
+<body>
+    <p>Task 1: Create a title element. It has yellow background and green text. And it only takes up as much space as needed. (15 points)<br/><br/>Task 2: Create two boxes with different sizes. The bigger box with red color and white border, and the smaller box has color blue. The smaller one is within the bigger one. (15 points)<br/><br/>Task 3: Make the bigger box center horizontally to the pane.(extra 5 points)</p>
+    
+
+</body>
+</html></textarea>
+        </div>
+      </div>
+
+      <!-- CSS -->
+      <div class="editor-pane" id="pane-css">
+        <div class="pane-header">
+          <div class="pane-tab">
+            <div class="tab-dot css"></div>
+            styles.css
+          </div>
+          <button class="pane-collapse" data-pane="css" title="Collapse">−</button>
+        </div>
+        <div class="editor-wrap">
+          <div class="line-nums" id="ln-css">1</div>
+          <textarea class="code-input css-ta" id="editor-css" spellcheck="false" autocorrect="off" autocapitalize="off">
+body { min-height: 100vh; background: #0f1117; font-family: system-ui, sans-serif; color: #a7d1c0 }
+</textarea>
+        </div>
+      </div>
+
+      <!-- JS -->
+      <div class="editor-pane" id="pane-js">
+        <div class="pane-header">
+          <div class="pane-tab">
+            <div class="tab-dot js"></div>
+            script.js
+          </div>
+          <button class="pane-collapse" data-pane="js" title="Collapse">−</button>
+        </div>
+        <div class="editor-wrap">
+          <div class="line-nums" id="ln-js">1</div>
+          <textarea class="code-input js-ta" id="editor-js" spellcheck="false" autocorrect="off" autocapitalize="off">
+/* JavaScript not needed. Please collapse the pane using "−" button. */
+          </textarea>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- RIGHT: TASK DESCRIPTION AND PREVIEW -->
+    <div class="preview-side" id="preview-side">
+      <div class="task-description" id="task-description">
+        <h2>Task Description</h2>
+        <p>Write HTML, CSS, and JavaScript code to complete this task.</p>
+      </div>
+      <div class="preview-output-wrapper">
+        <div class="preview-header">
+          <span class="preview-label">preview</span>
+          <span class="preview-url" id="preview-url">sandbox://preview</span>
+        </div>
+        <iframe id="preview" sandbox="allow-scripts allow-modals"></iframe>
+        <!-- CONSOLE -->
+        <div class="console-pane hidden" id="console-pane">
+          <div class="console-header">
+            <div class="console-title">
+              console
+              <span class="console-count" id="console-count">0</span>
+            </div>
+            <button class="console-clear" id="console-clear-btn">clear</button>
+          </div>
+          <div id="console-output"></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<!-- SUBMIT MODAL -->
+<div class="modal-backdrop" id="submit-modal">
+  <div class="modal">
+    <div class="modal-title">Submit Code</div>
+    <div class="modal-sub">Ready to send your HTML, CSS &amp; JS code?</div>
+
+    <div class="modal-row field-row">
+      <div>
+        <div class="field-label">Name <span style="opacity:0.5">(required)</span></div>
+        <input type="text" id="name" placeholder="Jane Smith"/>
+      </div>
+      <div>
+        <div class="field-label">Email <span style="opacity:0.5">(required)</span></div>
+        <input type="email" id="email" placeholder="jane@example.com"/>
+      </div>
+    </div>
+
+    <div class="modal-row field-row" style="display: none;">
+      <div>
+        <div class="field-label">Method</div>
+        <select id="api-method">
+          <option value="POST">POST</option>
+          <option value="PUT">PUT</option>
+          <option value="PATCH">PATCH</option>
+        </select>
+      </div>
+      <div>
+        <div class="field-label">Endpoint URL</div>
+        <input type="text" id="api-url" placeholder="https://your-api.com/submit"/>
+      </div>
+    </div>
+
+    <div class="field-row" style="display: none;">
+      <div class="field-label">Headers <span style="opacity:0.5">(JSON, optional)</span></div>
+      <textarea id="api-headers" placeholder='{"Authorization": "Bearer TOKEN"}'></textarea>
+    </div>
+
+    <div class="field-row" style="display: none;">
+      <div class="field-label">Payload preview <span style="opacity:0.5">(read-only)</span></div>
+      <textarea id="api-payload-preview" readonly style="opacity:0.55; min-height:60px;"></textarea>
+    </div>
+
+    <div id="submit-result" class="submit-result"></div>
+
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="modal-cancel">Cancel</button>
+      <button class="btn btn-submit" id="modal-send">Submit</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── CONFIG ──────────────────────────────────────────────
+// ↓↓↓ Set your API defaults here ↓↓↓
+const API_CONFIG = {
+  url: `${location.protocol}//${location.hostname}:5000/submit-code`,         // e.g. 'https://your-api.com/submit-code'
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    // 'Authorization': 'Bearer YOUR_TOKEN',
+  },
+  buildPayload(html, css, js, name, email) {
+    // Merge HTML, CSS, JS into a single integrated HTML file
+    const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+    const bodyContent = bodyMatch ? bodyMatch[1] : html;
+    const headMatch = html.match(/<head[^>]*>([\s\S]*)<\/head>/i);
+    const headContent = headMatch ? headMatch[1] : '<meta charset="UTF-8"/>';
+
+    const merged = `<!DOCTYPE html>
+<html lang="en">
+<head>
+${headContent.trim()}
+<style>
+${css.trim()}
+</style>
+</head>
+<body>
+${bodyContent.trim()}
+<script>
+${js.trim()}
+<\/script>
+</body>
+</html>`;
+
+    const today = new Date();
+    const dateFolder = today.toISOString().split('T')[0]; // YYYY-MM-DD format
+
+    return {
+      name,
+      email,
+      code: merged,
+      timestamp: new Date().toISOString(),
+      folder: `assets/submissions/webcode/${dateFolder}`,
+    };
+  }
+};
+// ↑↑↑ End config ↑↑↑
+// ────────────────────────────────────────────────────────
+
+// ── EDITORS ──
+const editors = {
+  html: document.getElementById('editor-html'),
+  css:  document.getElementById('editor-css'),
+  js:   document.getElementById('editor-js'),
+};
+
+// Line numbers
+function updateLineNums(lang) {
+  const ta = editors[lang];
+  const ln = document.getElementById('ln-' + lang);
+  const count = ta.value.split('\n').length;
+  ln.innerHTML = Array.from({length: count}, (_, i) => i + 1).join('<br>');
+}
+
+// Tab support + no paste
+Object.entries(editors).forEach(([lang, ta]) => {
+  updateLineNums(lang);
+
+  ta.addEventListener('input', () => updateLineNums(lang));
+  ta.addEventListener('scroll', () => {
+    document.getElementById('ln-' + lang).style.transform = `translateY(-${ta.scrollTop}px)`;
+  });
+  ta.addEventListener('keydown', e => {
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      const s = ta.selectionStart, end = ta.selectionEnd;
+      ta.value = ta.value.substring(0, s) + '  ' + ta.value.substring(end);
+      ta.selectionStart = ta.selectionEnd = s + 2;
+      updateLineNums(lang);
+    }
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') runCode();
+  });
+  ta.addEventListener('paste', e => {
+    e.preventDefault();
+    showToast('Pasting is disabled — type your code ✍️');
+  });
+});
+
+// ── RUN ──
+let logCount = 0;
+
+function runCode() {
+  const html = editors.html.value;
+  const css  = editors.css.value;
+  const js   = editors.js.value;
+
+  // Flash
+  document.getElementById('preview').classList.add('run-flash');
+  setTimeout(() => document.getElementById('preview').classList.remove('run-flash'), 500);
+
+  // Build document
+  const doc = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8"/>
+<style>${css}</style>
+</head>
+<body>
+${extractBody(html)}
+<script>
+// Console bridge
+(function() {
+  const send = (level, args) => {
+    window.parent.postMessage({ type: 'console', level, args: args.map(String) }, '*');
+  };
+  ['log','warn','error','info'].forEach(fn => {
+    const orig = console[fn].bind(console);
+    console[fn] = (...a) => { send(fn, a); orig(...a); };
+  });
+  window.addEventListener('error', e => {
+    send('error', [e.message + ' (line ' + e.lineno + ')']);
+  });
+})();
+<\/script>
+<script>${js}<\/script>
+</body>
+</html>`;
+
+  const iframe = document.getElementById('preview');
+  iframe.srcdoc = doc;
+  document.getElementById('preview-url').textContent = 'sandbox://preview — ' + new Date().toLocaleTimeString();
+}
+
+function extractBody(fullHtml) {
+  const bodyMatch = fullHtml.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+  return bodyMatch ? bodyMatch[1] : fullHtml;
+}
+
+// ── CONSOLE ──
+window.addEventListener('message', e => {
+  if (e.data?.type !== 'console') return;
+  const { level, args } = e.data;
+  addLog(level, args.join(' '));
+});
+
+function addLog(level, msg) {
+  logCount++;
+  document.getElementById('console-count').textContent = logCount;
+  const out = document.getElementById('console-output');
+  const now = new Date().toLocaleTimeString('en', {hour12: false, hour:'2-digit', minute:'2-digit', second:'2-digit'});
+  const line = document.createElement('div');
+  line.className = `log-line log-${level}`;
+  line.innerHTML = `<span class="log-time">${now}</span><span class="log-msg">${escapeHtml(msg)}</span>`;
+  out.appendChild(line);
+  out.scrollTop = out.scrollHeight;
+}
+
+document.getElementById('console-clear-btn').addEventListener('click', () => {
+  document.getElementById('console-output').innerHTML = '';
+  logCount = 0;
+  document.getElementById('console-count').textContent = '0';
+});
+
+// ── COLLAPSE PANES ──
+document.querySelectorAll('.pane-collapse').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const pane = document.getElementById('pane-' + btn.dataset.pane);
+    const collapsed = pane.classList.toggle('collapsed');
+    btn.textContent = collapsed ? '+' : '−';
+    // Recalculate grid rows
+    const panes = ['html','css','js'];
+    const open = panes.filter(p => !document.getElementById('pane-'+p).classList.contains('collapsed'));
+    const side = document.getElementById('editors-side');
+    const rows = panes.map(p =>
+      document.getElementById('pane-'+p).classList.contains('collapsed') ? '34px' : '1fr'
+    ).join(' ');
+    side.style.gridTemplateRows = rows;
+  });
+});
+
+// ── LAYOUT TOGGLE ──
+document.getElementById('layout-split').addEventListener('click', () => setLayout('split'));
+document.getElementById('layout-editors').addEventListener('click', () => setLayout('editors'));
+document.getElementById('layout-preview').addEventListener('click', () => setLayout('preview'));
+
+function setLayout(mode) {
+  const ws = document.getElementById('workspace');
+  ws.className = 'workspace' + (mode !== 'split' ? ' layout-' + mode : '');
+  document.querySelectorAll('.layout-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('layout-' + mode).classList.add('active');
+}
+
+// ── CONSOLE TOGGLE ──
+document.getElementById('btn-console').addEventListener('click', () => {
+  const pane = document.getElementById('console-pane');
+  pane.classList.toggle('hidden');
+});
+
+// ── CLEAR ──
+document.getElementById('btn-clear-all').addEventListener('click', () => {
+  editors.html.value = '';
+  editors.css.value = '';
+  editors.js.value = '';
+  ['html','css','js'].forEach(updateLineNums);
+  document.getElementById('preview').srcdoc = '';
+  document.getElementById('console-output').innerHTML = '';
+  logCount = 0;
+  document.getElementById('console-count').textContent = '0';
+});
+
+// ── RUN BUTTON ──
+document.getElementById('btn-run').addEventListener('click', runCode);
+
+// ── SUBMIT ──
+document.getElementById('btn-submit').addEventListener('click', () => {
+  const urlInput = document.getElementById('api-url');
+  const methodSel = document.getElementById('api-method');
+  const headersInput = document.getElementById('api-headers');
+  const preview = document.getElementById('api-payload-preview');
+  const result = document.getElementById('submit-result');
+
+  urlInput.value = API_CONFIG.url || '';
+  methodSel.value = API_CONFIG.method || 'POST';
+  const defaultHeaders = Object.fromEntries(Object.entries(API_CONFIG.headers).filter(([k]) => k !== 'Content-Type'));
+  headersInput.value = Object.keys(defaultHeaders).length ? JSON.stringify(defaultHeaders, null, 2) : '';
+
+  const payload = API_CONFIG.buildPayload(editors.html.value, editors.css.value, editors.js.value, '', '');
+  preview.value = JSON.stringify(payload, null, 2);
+
+  result.className = 'submit-result';
+  result.textContent = '';
+
+  document.getElementById('submit-modal').classList.add('open');
+
+  // alert("OK")
+  // redirect to finish page after 1 seconds (for quiz flow)
+  // setTimeout(() => {
+  //   window.location.href = `${location.protocol}//${location.hostname}:5500/done.html`;
+  // }, 30000);
+
+});
+
+document.getElementById('modal-cancel').addEventListener('click', () => {
+  document.getElementById('submit-modal').classList.remove('open');
+});
+
+// Live payload preview update when name/email change
+['name','email'].forEach(id => {
+  document.getElementById(id).addEventListener('input', () => {
+    const name = document.getElementById('name').value.trim();
+    const email = document.getElementById('email').value.trim();
+    const payload = API_CONFIG.buildPayload(editors.html.value, editors.css.value, editors.js.value, name, email);
+    document.getElementById('api-payload-preview').value = JSON.stringify(payload, null, 2);
+  });
+});
+document.getElementById('submit-modal').addEventListener('click', e => {
+  if (e.target === e.currentTarget) e.currentTarget.classList.remove('open');
+});
+
+document.getElementById('modal-send').addEventListener('click', async () => {
+  const url = document.getElementById('api-url').value.trim();
+  const method = document.getElementById('api-method').value;
+  const headersRaw = document.getElementById('api-headers').value.trim();
+  const name = document.getElementById('name').value.trim();
+  const email = document.getElementById('email').value.trim();
+  const result = document.getElementById('submit-result');
+  const sendBtn = document.getElementById('modal-send');
+
+  if (!name) {
+    result.className = 'submit-result err';
+    result.textContent = 'Error: Please enter your name.';
+    return;
+  }
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    result.className = 'submit-result err';
+    result.textContent = 'Error: Please enter a valid email address.';
+    return;
+  }
+  if (!url) {
+    result.className = 'submit-result err';
+    result.textContent = 'Error: Please enter an API endpoint URL.';
+    return;
+  }
+
+  let extraHeaders = {};
+  if (headersRaw) {
+    try { extraHeaders = JSON.parse(headersRaw); }
+    catch { result.className = 'submit-result err'; result.textContent = 'Error: Invalid JSON in headers.'; return; }
+  }
+
+  const payload = API_CONFIG.buildPayload(editors.html.value, editors.css.value, editors.js.value, name, email);
+  const headers = { 'Content-Type': 'application/json', ...extraHeaders };
+
+  sendBtn.disabled = true;
+  sendBtn.textContent = '⏳ Sending…';
+  result.className = 'submit-result';
+
+  try {
+    const res = await fetch(url, { method, headers, body: JSON.stringify(payload) });
+    const text = await res.text();
+    let pretty = text;
+    try { pretty = JSON.stringify(JSON.parse(text), null, 2); } catch(_) {}
+
+    if (res.ok) {
+      result.className = 'submit-result ok';
+      result.textContent = `✓ ${res.status} ${res.statusText}\n\n${pretty}`;
+      showToast('Code submitted successfully ✓');
+      window.location.href = "./done.html";
+      alert("✅Your are all set!✅");
+      
+      // code submitted, redirect to finish page after 1 seconds (for quiz flow)
+      // setTimeout(() => {
+      //   window.location.href = `${location.protocol}//${location.hostname}:5500/done.html`;
+      // }, 1000);
+
+    } else {
+      result.className = 'submit-result err';
+      result.textContent = `✕ ${res.status} ${res.statusText}\n\n${pretty}`;
+    }
+  } catch(err) {
+    result.className = 'submit-result err';
+    result.textContent = `Network error: ${err.message}`;
+  }
+
+  sendBtn.disabled = false;
+  sendBtn.textContent = '⬆ Send to API';
+});
+
+// ── TOAST ──
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2400);
+}
+
+// ── UTILS ──
+function escapeHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── LOAD QUESTIONS FROM JSON ──
+async function loadQuestions() {
+  try {
+    const res = await fetch('./assets/questions/ques_web.json');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const questions = await res.json();
+    
+    if (questions.length > 0) {
+      const firstTask = questions[0];
+      const descHTML = formatDescription(firstTask.text || 'No description available');
+      document.getElementById('task-description').innerHTML = descHTML;
+    }
+  } catch(err) {
+    console.error('Failed to load questions:', err);
+    document.getElementById('task-description').innerHTML = `
+      <p style="color: var(--red);">Failed to load task description.</p>
+      <p>Please try refreshing the page.</p>
+    `;
+  }
+}
+
+function formatDescription(text) {
+  // Convert markdown code blocks (```...```) to <pre> tags
+  let html = text.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
+  
+  // Convert double newlines to paragraph breaks
+  html = html.replace(/\n\n+/g, '</p><p>');
+  
+  // Wrap in initial <p> tag if not already wrapped
+  if (!html.startsWith('<p>')) {
+    html = '<p>' + html;
+  }
+  if (!html.endsWith('</p>')) {
+    html = html + '</p>';
+  }
+  
+  // Convert single newlines within paragraphs to <br>
+  html = html.replace(/\n/g, '<br>');
+  
+  return html;
+}
+
+// ── LOAD STUDENT INFO FROM QUIZ ──
+function loadStudentInfoFromQuiz() {
+  const nameInput = document.getElementById('name');
+  const emailInput = document.getElementById('email');
+  
+  const savedName = localStorage.getItem('quiz_student_name');
+  const savedEmail = localStorage.getItem('quiz_student_email');
+  
+  if (savedName) {
+    nameInput.value = savedName;
+  }
+  if (savedEmail) {
+    emailInput.value = savedEmail;
+  }
+  
+  // Show a notification that student info was pre-filled
+  if (savedName && savedEmail) {
+    showToast(`Welcome back, ${savedName}! Please continue with your quiz.`);
+  }
+}
+
+// Auto-run on load
+loadQuestions();
+loadStudentInfoFromQuiz();
+runCode();
+</script>
+</body>
+</html>

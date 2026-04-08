@@ -1,0 +1,7 @@
+{
+  "name": "ttt ttttt",
+  "email": "ttt@gmail.com",
+  "code": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"UTF-8\"/>\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"/>\n  <title>My Page</title>\n<style>\nbody { min-height: 100vh; background: #0f1117; font-family: system-ui, sans-serif; color: #a7d1c0 }\n</style>\n</head>\n<body>\n<p>Task 1: Create a title element. It has yellow background and green text. And it only takes up as much space as needed. (15 points)<br/><br/>Task 2: Create two boxes with different sizes. The bigger box with red color and white border, and the smaller box has color blue. The smaller one is within the bigger one. (15 points)<br/><br/>Task 3: Make the bigger box center horizontally to the pane.(extra 5 points)</p>\n<script>\n/* JavaScript not needed. Please collapse the pane using \"\u2212\" button. */\n</script>\n</body>\n</html>",
+  "timestamp": "2026-04-07T21:04:38.049Z",
+  "folder": "assets/submissions/webcode/2026-04-07"
+}

@@ -1,0 +1,14 @@
+[
+  {
+    "type": "coding",
+    "text": "You are given the following matrix:\n\n```\n1 2 3\n4 5 6\n7 8 9\n```\n\nWrite a Python function that takes this matrix as input and returns the sum of the elements in the main diagonal."
+  },
+  {
+    "type": "coding",
+    "text": "MBR support up to partitions."
+  },
+{
+    "type": "coding",
+    "text": "MBR support up to partitions."
+  }
+]

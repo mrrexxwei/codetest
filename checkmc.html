@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>eQuiz — Submissions</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    .toolbar {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 1.5rem;
+      align-items: center;
+    }
+
+    .toolbar input {
+      flex: 1;
+      min-width: 240px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      font-size: 0.95rem;
+    }
+
+    .submission-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 1.5rem;
+    }
+
+    .submission-table th,
+    .submission-table td {
+      padding: 12px 14px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      text-align: left;
+      font-size: 0.92rem;
+    }
+
+    .submission-table th {
+      color: var(--muted);
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      font-size: 0.75rem;
+    }
+
+    .submission-table tr:hover {
+      background: rgba(255,255,255,0.06);
+    }
+
+    .submission-detail {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+      margin-top: 1.5rem;
+    }
+
+    .submission-detail pre {
+      background: rgba(255,255,255,0.04);
+      padding: 1rem;
+      border-radius: 12px;
+      overflow-x: auto;
+      color: var(--text);
+      font-size: 0.85rem;
+      line-height: 1.4;
+    }
+
+    .detail-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 1.5rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .detail-student {
+      flex: 1;
+    }
+
+    .detail-student h2 {
+      margin: 0 0 0.5rem 0;
+      font-size: 1.5rem;
+      font-weight: 700;
+    }
+
+    .detail-student p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .detail-meta {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .meta-item {
+      background: rgba(255,255,255,0.05);
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      text-align: center;
+      min-width: 80px;
+    }
+
+    .meta-item .val {
+      display: block;
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .meta-item .lbl {
+      font-size: 0.75rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-top: 2px;
+    }
+
+    .answers-section {
+      margin-top: 2rem;
+    }
+
+    .answers-section h3 {
+      margin: 0 0 1rem 0;
+      font-size: 1.2rem;
+      font-weight: 600;
+    }
+
+    .question-item {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 12px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .question-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 0.75rem;
+    }
+
+    .question-text {
+      flex: 1;
+      font-weight: 600;
+      margin-right: 1rem;
+    }
+
+    .question-type {
+      background: rgba(61,214,245,0.1);
+      color: var(--accent2);
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-family: 'DM Mono', monospace;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .answer-row {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 0.5rem;
+      align-items: flex-start;
+    }
+
+    .answer-label {
+      font-weight: 600;
+      color: var(--muted);
+      min-width: 100px;
+      flex-shrink: 0;
+    }
+
+    .answer-val {
+      flex: 1;
+      word-wrap: break-word;
+      white-space: pre-wrap;
+    }
+
+    .correct-val {
+      color: var(--correct);
+    }
+
+    .incorrect-val {
+      color: var(--incorrect);
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-family: 'DM Mono', monospace;
+      font-size: 0.75rem;
+      letter-spacing: 0.5px;
+      background: rgba(255,255,255,0.07);
+    }
+
+    .status-pill[data-score^="100"] {
+      background: rgba(74, 222, 128, 0.18);
+      color: var(--correct);
+    }
+
+    .status-pill[data-score*="%"] {
+      background: rgba(61, 214, 245, 0.14);
+      color: var(--accent2);
+    }
+
+    .status-pill[data-score*="N/A"] {
+      background: rgba(248, 113, 113, 0.18);
+      color: var(--incorrect);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo">
+      <div class="logo-dot"></div>
+      eQuiz
+    </div>
+    <div style="display:flex;gap:12px;align-items:center">
+      <a class="btn-secondary" href="index.html">← Take Quiz</a>
+      <a class="btn-secondary" href="submissions.html">Refresh</a>
+    </div>
+  </header>
+
+  <div class="container">
+    <h1 style="margin-bottom:0.4rem">Submissions</h1>
+    <p style="color:var(--muted);margin-bottom:1.5rem;">View all quiz submissions saved in <code>submissions/</code>. Click a row to view the full JSON payload.</p>
+
+    <div class="toolbar">
+      <input id="filter" placeholder="Filter by name, email, or score…" />
+      <button class="btn-primary" id="refresh">Refresh</button>
+    </div>
+
+    <div id="status" style="color:var(--muted);margin-bottom:1rem;font-size:.95rem"></div>
+    <div id="list"></div>
+    <div id="detail" class="submission-detail" style="display:none"></div>
+  </div>
+
+  <script>
+    const API_BASE = `${location.protocol}//${location.hostname}:5000`;
+    const listEl = document.getElementById('list');
+    const detailEl = document.getElementById('detail');
+    const statusEl = document.getElementById('status');
+    const filterEl = document.getElementById('filter');
+    const refreshBtn = document.getElementById('refresh');
+
+    let submissions = [];
+
+    function setStatus(text) {
+      statusEl.textContent = text;
+    }
+
+    function formatDate(value) {
+      if (!value) return '—';
+      try {
+        const d = new Date(value);
+        return isNaN(d) ? value : d.toLocaleString();
+      } catch {
+        return value;
+      }
+    }
+
+    function renderList() {
+      const filter = filterEl.value.trim().toLowerCase();
+      const rows = submissions
+        .filter(s => {
+          if (!filter) return true;
+          const hay = `${s.name||''} ${s.email||''} ${s.score||''}`.toLowerCase();
+          return hay.includes(filter);
+        })
+        .map(s => {
+          return `
+            <tr data-filename="${s.filename}">
+              <td>${s.name || '—'}</td>
+              <td>${s.email || '—'}</td>
+              <td>${s.types || '—'}</td>
+              <td><span class="status-pill" data-score="${s.score || ''}">${s.score || 'N/A'}</span></td>
+              <td>${formatDate(s.submitted_at)}</td>
+            </tr>
+          `;
+        })
+        .join('');
+
+      if (!rows) {
+        listEl.innerHTML = '<p style="color:var(--muted);">No submissions found.</p>';
+        return;
+      }
+
+      listEl.innerHTML = `
+        <table class="submission-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Type</th>
+              <th>Score</th>
+              <th>Submitted</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+        <p style="color:var(--muted);font-size:.9rem;margin-top:-0.5rem">Click a row to view the full JSON.</p>
+      `;
+
+      listEl.querySelectorAll('tbody tr').forEach(row => {
+        row.addEventListener('click', () => {
+          const filename = row.dataset.filename;
+          if (filename) loadDetail(filename);
+        });
+      });
+    }
+
+    async function loadDetail(filename) {
+      detailEl.style.display = 'block';
+      detailEl.innerHTML = '<p style="color:var(--muted);">Loading…</p>';
+
+      try {
+        const res = await fetch(`${API_BASE}/submissions/${encodeURIComponent(filename)}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const json = await res.json();
+
+        // Parse data
+        const types = json.types || '';
+        const name = json.name || 'Unknown';
+        const email = json.email || 'unknown@email.com';
+        const score = json.score || 'N/A';
+        const correct = json.correct || 0;
+        const totalMc = json.total_mc || 0;
+        const timeTaken = json.time_taken || 'N/A';
+        const submittedAt = json.submitted_at || 'N/A';
+        const answersStr = json.answers || '';
+
+        // Parse answers
+        const questions = answersStr.split('\n\n---\n\n').filter(q => q.trim());
+        const questionItems = questions.map(q => {
+          const lines = q.split('\n');
+          const header = lines[0] || '';
+          const isMc = header.includes('[Multiple Choice]');
+          const isSa = header.includes('[Short Answer]');
+          const questionText = header.replace(/^Q\d+ \[(Multiple Choice|Short Answer)\]: /, '');
+
+          let yourAnswer = '';
+          let correctAnswer = '';
+          let result = '';
+
+          if (isMc) {
+            const yourLine = lines.find(l => l.startsWith('Your Answer: '));
+            const corrLine = lines.find(l => l.startsWith('Correct Answer: '));
+            const resLine = lines.find(l => l.startsWith('Result: '));
+            yourAnswer = yourLine ? yourLine.replace('Your Answer: ', '') : '';
+            correctAnswer = corrLine ? corrLine.replace('Correct Answer: ', '') : '';
+            result = resLine ? resLine.replace('Result: ', '') : '';
+          } else if (isSa) {
+            const yourIndex = lines.findIndex(l => l.startsWith('Your Answer: '));
+            if (yourIndex !== -1) {
+              yourAnswer = lines.slice(yourIndex).join('\n').replace(/^Your Answer: /, '');
+            }
+          }
+
+          return {
+            text: questionText,
+            type: isMc ? 'Multiple Choice' : isSa ? 'Short Answer' : 'Unknown',
+            yourAnswer,
+            correctAnswer,
+            result,
+            isCorrect: result.includes('Correct')
+          };
+        });
+
+        // Render HTML
+        const questionHtml = questionItems.map(q => `
+          <div class="question-item">
+            <div class="question-header">
+              <div class="question-text">${q.text}</div>
+              <div class="question-type">${q.type}</div>
+            </div>
+            ${q.yourAnswer ? `<div class="answer-row">
+              <div class="answer-label">Your Answer:</div>
+              <div class="answer-val ${q.isCorrect ? 'correct-val' : 'incorrect-val'}">${q.type === 'Short Answer' ? '<br>' : ''}${q.yourAnswer}</div>
+            </div>` : ''}
+            ${q.correctAnswer ? `<div class="answer-row">
+              <div class="answer-label">Correct Answer:</div>
+              <div class="answer-val correct-val">${q.correctAnswer}</div>
+            </div>` : ''}
+            ${q.result ? `<div class="answer-row">
+              <div class="answer-label">Result:</div>
+              <div class="answer-val ${q.isCorrect ? 'correct-val' : 'incorrect-val'}">${q.result}</div>
+            </div>` : ''}
+          </div>
+        `).join('');
+
+        detailEl.innerHTML = `
+          <div class="detail-header">
+            <div class="detail-student">
+              <h2>${name}</h2>
+              <p>${email}</p>
+            </div>
+            <div class="detail-meta">
+                <div class="meta-item">
+                    <span class="val">${score}</span>
+                    <span class="lbl">Score</span>
+                </div>
+
+              <div class="meta-item">
+                <span class="val">${correct}/${totalMc}</span>
+                <span class="lbl">Correct</span>
+              </div>
+              <div class="meta-item">
+                <span class="val">${timeTaken}</span>
+                <span class="lbl">Time</span>
+              </div>
+            </div>
+          </div>
+          <div class="answers-section">
+            <h3>Answers</h3>
+            ${questionHtml || '<p style="color:var(--muted);">No answers found.</p>'}
+          </div>
+        `;
+      } catch (err) {
+        detailEl.innerHTML = `<p style="color:var(--incorrect);">Failed to load submission: ${err.message}</p>`;
+      }
+    }
+
+    async function loadSubmissions() {
+      setStatus('Loading submissions…');
+      detailEl.style.display = 'none';
+      try {
+        const res = await fetch(`${API_BASE}/checkmc`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        submissions = await res.json();
+        setStatus(`Loaded ${submissions.length} submission${submissions.length === 1 ? '' : 's'}`);
+        renderList();
+      } catch (err) {
+        setStatus(`Unable to load submissions. Make sure the server is running.`);
+        listEl.innerHTML = `<p style="color:var(--incorrect);">${err.message}</p>`;
+      }
+    }
+
+    refreshBtn.addEventListener('click', loadSubmissions);
+    filterEl.addEventListener('input', renderList);
+
+    loadSubmissions();
+  </script>
+</body>
+</html>
+``` 
