@@ -46,5 +46,17 @@
     "text": "How many disks RAID 1 will need to work?",
     "options": ["10", "2", "4", "3"],
     "answer": "2"
+  },
+  {
+    "type": "mc",
+    "text": "Which one is not a data type in JavaScript?",
+    "options": ["amount", "null", "boolean", "string"],
+    "answer": "amount"
+  },
+  {
+    "type": "mc",
+    "text": "NTFS doesn't provide _______ benefit. ",
+    "options": ["bigger file size", "more secure", "better encription", "supporting more file types"],
+    "answer": "supporting more file types"
   }
 ]
