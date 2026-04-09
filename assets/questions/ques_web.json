@@ -1,6 +1,6 @@
 [
   {
     "type": "coding",
-    "text": "You are given the following matrix:\n\n```\n1 2 3\n4 5 6\n7 8 9\n```\n\nWrite a Python function that takes this matrix as input and returns the sum of the elements in the main diagonal."
+    "text": "Define two variables, one for the name of a person and another for salary. \nPrint these two variables to the console but add 1000 to the salary."
   }
 ]

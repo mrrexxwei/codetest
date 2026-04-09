@@ -1,8 +1,50 @@
 [
   {
     "type": "mc",
-    "text": "MBR support up to ____ partitions. (7 points)",
+    "text": "MBR support up to ____ partitions.",
     "options": ["6", "2", "4", "128"],
     "answer": "4"
+  },
+  {
+    "type": "mc",
+    "text": "Which keyword is used to declare a variable.",
+    "options": ["func", "def", "let", "var"],
+    "answer": "let"
+  },  
+  {
+    "type": "mc",
+    "text": "GPT support up to ____ partitions.",
+    "options": ["6", "2", "4", "128"],
+    "answer": "128"
+  },
+  {
+    "type": "mc",
+    "text": "What is the result of 26 % 5 ?",
+    "options": ["3", "1", "4", "0"],
+    "answer": "6"
+  },
+  {
+    "type": "mc",
+    "text": "What is the data type of 120.23?",
+    "options": ["integer", "string", "boolean", "float"],
+    "answer": "float"
+  },
+  {
+    "type": "mc",
+    "text": "What is a variable?",
+    "options": ["a container", "a number", "a text", "a marker"],
+    "answer": "a container"
+  },
+  {
+    "type": "mc",
+    "text": "Which is not a place to write JavaScript code",
+    "options": ["header", "external", "internal", "inline"],
+    "answer": "header"
+  },
+  {
+    "type": "mc",
+    "text": "How many disks RAID 1 will need to work?",
+    "options": ["10", "2", "4", "3"],
+    "answer": "2"
   }
 ]
