@@ -1,6 +1,6 @@
 [
   {
     "type": "coding",
-    "text": "Tasks: \n1.Define two variables, one for the name of a person and another for salary(consider the data types). \n2. Print these two variables to the console but add 1000 to the salary.\n(extra credit) Print a statement 'Hi, my name is XXX, my income is XXX.'"
+    "text": "[ Task ]\n1. Define a constant for 'your name', a variable of 'your age'. Assign random values to them. Print these two data to console.\n2. Let user input value for a variable 'salary'. Compare this value with 3000. Pop the result of comparison on the web page. The message should look like: Hello, my salary is higher than 3000 (true/false). \n[ Extra Credit ]\nGet the sum of 4 to the power of 3 and 3 to the power of 3. Print it to the console."
   }
 ]
